@@ -1,32 +1,22 @@
 # cloudbuild.yaml
 
-steps:
-  # 1. Build and push the Docker image for the function
-  - name: "gcr.io/cloud-builders/docker"
-    id: BuildDockerImage
-    args:
-      - "build"
-      - "--tag=${_REGION}-docker.pkg.dev/${PROJECT_ID}/cloud-run-source-deploy/store-order-data:${COMMIT_SHA}"
-      - "--no-cache"
-      - "./functions/store_order_data"
+options:
+  logging: CLOUD_LOGGING_ONLY
 
-  # 2. Deploy the Cloud Function from the image
+steps:
   - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
     id: DeployCloudFunction
     entrypoint: gcloud
     args:
-      - "functions"
-      - "deploy"
-      - "store-order-data"
-      - "--gen2"
-      - "--runtime=python39"
-      - "--region=${_REGION}"
-      - "--image='${_IMAGE_REPO}:${COMMIT_SHA}'"
-      - "--trigger-topic=prestashop-order-data"
-      - "--memory=256Mi"
-      - "--timeout=30s"
-      - "--set-env-vars=FIRESTORE_EMULATOR_HOST="
-      - "--set-env-vars=FUNCTION_TARGET=store_order_data"
-
-options:
-  logging: CLOUD_LOGGING_ONLY
+      - functions
+      - deploy
+      - store-order-data
+      - --gen2
+      - --region=${_REGION}
+      - --runtime=python39
+      - --source=functions/store_order_data
+      - --entry-point=store_order_data
+      - --trigger-topic=prestashop-order-data
+      - --memory=256Mi
+      - --timeout=30s
+      - --set-env-vars=FIRESTORE_EMULATOR_HOST=
