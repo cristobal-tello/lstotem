@@ -19,4 +19,4 @@ steps:
       - --trigger-topic=prestashop-order-data
       - --memory=256Mi
       - --timeout=30s
-      - --set-env-vars=FIRESTORE_EMULATOR_HOST=
+      - "--set-env-vars=FUNCTION_TARGET=store_order_data"
