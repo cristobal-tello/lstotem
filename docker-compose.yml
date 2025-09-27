@@ -1,0 +1,33 @@
+version: "3.8"
+
+services:
+  # Your Cloud Function service
+  store-order-data:
+    build:
+      context: ./functions/store_order_data
+
+    # This volume is the key to live reloading!
+    volumes:
+      - ./functions/store_order_data:/app
+
+    # Expose only the function's HTTP port.
+    ports:
+      - "8080:8080"
+
+    environment:
+      # The function will still connect to the Firestore emulator
+      FIRESTORE_EMULATOR_HOST: "firestore-emulator:8080"
+      FUNCTION_TARGET: store_order_data
+
+  # The Firestore Emulator service
+  firestore-emulator:
+    image: gcr.io/google.com/cloudsdktool/cloud-sdk:448.0.0-emulators
+    command: gcloud emulators firestore start --host-port=0.0.0.0:8080
+    ports:
+      - "8082:8080"
+      - "9090:9090"
+    volumes:
+      - firestore-data:/data
+
+volumes:
+  firestore-data:

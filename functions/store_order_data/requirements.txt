@@ -1,0 +1,3 @@
+# functions/store_order_data/requirements.txt
+functions-framework
+google-cloud-firestore
