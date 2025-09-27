@@ -1,6 +1,6 @@
 # functions/store_order_data/Dockerfile
 
-FROM python:3.9-slim
+FROM python:3.12-slim
 
 # Install necessary libraries for the function
 RUN pip install functions-framework google-cloud-firestore
