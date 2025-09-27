@@ -30,7 +30,3 @@ steps:
       - "--timeout=30s"
       - "--set-env-vars=FIRESTORE_EMULATOR_HOST="
       - "--set-env-vars=FUNCTION_TARGET=store_order_data"
-
-options:
-  default_logs_bucket_behavior: REGIONAL_USER_OWNED_BUCKET
-  serviceAccount: "projects/YOUR_PROJECT_ID/serviceAccounts/your-custom-sa@YOUR_PROJECT_ID.iam.gserviceaccount.com"
