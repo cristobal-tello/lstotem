@@ -116,3 +116,10 @@ curl -sS -X POST http://localhost:8080 \
      -H "ce-type: google.cloud.pubsub.topic.v1.messagePublished" \
      -H "ce-source: //pubsub.googleapis.com/projects/your-project-id/topics/prestashop-order-data" \
      -d "$(printf '{"message":{"data":"%s"}}' "$BASE64_PAYLOAD")"
+
+Perfect. You have completed the local development and testing phase. Now that your code is in a Git repository, the next step is to set up a continuous deployment pipeline to get your function into production.
+
+The best way to do this on Google Cloud is by using Cloud Build to automate the deployment process. This approach ensures that every time you push a change to your Git repository, your function is automatically and consistently deployed.
+
+Create the cloudbuild.yaml File
+This file is the most important part of the deployment. It tells Cloud Build exactly what steps to take to build and deploy your function. It should be placed in the root of your project, alongside your functions/ directory.

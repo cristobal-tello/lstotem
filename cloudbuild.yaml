@@ -1,0 +1,29 @@
+# cloudbuild.yaml
+
+steps:
+  # 1. Build and push the Docker image for the function
+  - name: "gcr.io/cloud-builders/docker"
+    id: BuildDockerImage
+    args:
+      - "build"
+      - "--tag=${_IMAGE_NAME}:${COMMIT_SHA}"
+      - "--no-cache"
+      - "./functions/store_order_data"
+
+  # 2. Deploy the Cloud Function from the image
+  - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
+    id: DeployCloudFunction
+    entrypoint: gcloud
+    args:
+      - "functions"
+      - "deploy"
+      - "store-order-data"
+      - "--gen2"
+      - "--runtime=python39"
+      - "--region=${_REGION}"
+      - "--image=${_IMAGE_NAME}:${COMMIT_SHA}"
+      - "--trigger-topic=prestashop-order-data"
+      - "--memory=256Mi"
+      - "--timeout=30s"
+      - "--set-env-vars=FIRESTORE_EMULATOR_HOST="
+      - "--set-env-vars=FUNCTION_TARGET=store_order_data"
