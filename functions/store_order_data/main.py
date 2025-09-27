@@ -12,25 +12,33 @@ if not logging.getLogger().handlers:
 
 logger = logging.getLogger(__name__)
 
-try:
-    # The client automatically uses FIRESTORE_EMULATOR_HOST if set locally
-    # It uses production Firestore if the environment variable is unset (in GCP)
-    db = firestore.Client()
-    logger.info("Firestore client initialized successfully.")
-except Exception as e:
-    logger.error(f"Failed to initialize Firestore client: {e}")
-    db = None # Set to None if initialization fails
+# Global variable to store the initialized client
+db = None 
+
+def get_firestore_client():
+    """Initializes the Firestore client only if it hasn't been done yet."""
+    global db
+    if db is None:
+        try:
+            db = firestore.Client()
+            logger.info("Firestore client initialized successfully.")
+        except Exception as e:
+            logger.error(f"Failed to initialize Firestore client: {e}")
+            raise
+    return db
 
 @functions_framework.cloud_event
 def store_order_data(cloud_event):
     """
     Cloud Function triggered by a Pub/Sub message (CloudEvent).
     """
+    db = get_firestore_client() 
+    
     if db is None:
+        # This case should only hit if initialization failed fatally
         logger.error("Skipping execution because Firestore client is not available.")
-        # Return OK so the Pub/Sub message is not retried indefinitely
         return "Firestore Unavailable", 503
-        
+
     try:
         message_id = cloud_event['id'] 
         
