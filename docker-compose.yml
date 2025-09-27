@@ -6,6 +6,12 @@ services:
     build:
       context: ./functions/store_order_data
 
+    container_name: lstotem_store-order-data # Optional, but good practice
+
+    # Ensures the emulator starts before the function tries to connect
+    depends_on:
+      - firestore-emulator
+
     # This volume is the key to live reloading!
     volumes:
       - ./functions/store_order_data:/app
@@ -14,14 +20,16 @@ services:
     ports:
       - "8080:8080"
 
+    restart: always
+
     environment:
-      # The function will still connect to the Firestore emulator
       FIRESTORE_EMULATOR_HOST: "firestore-emulator:8080"
       FUNCTION_TARGET: store_order_data
 
   # The Firestore Emulator service
   firestore-emulator:
     image: gcr.io/google.com/cloudsdktool/cloud-sdk:448.0.0-emulators
+    container_name: lstotem_firestore-emulator
     command: gcloud emulators firestore start --host-port=0.0.0.0:8080
     ports:
       - "8082:8080"
