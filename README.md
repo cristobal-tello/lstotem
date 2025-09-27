@@ -123,3 +123,8 @@ The best way to do this on Google Cloud is by using Cloud Build to automate the 
 
 Create the cloudbuild.yaml File
 This file is the most important part of the deployment. It tells Cloud Build exactly what steps to take to build and deploy your function. It should be placed in the root of your project, alongside your functions/ directory.
+
+Don't forget to enable Cloud Function API
+You need to enable the Cloud Functions API because deploying a Cloud Function is an API operation performed by the Google Cloud SDK (gcloud), which runs within your Cloud Build job.
+
+Also Cloud Resource Manager API, Eventarc API, Cloud Run API
