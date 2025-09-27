@@ -21,7 +21,7 @@ steps:
       - "--gen2"
       - "--runtime=python39"
       - "--region=${_REGION}"
-      - "--image=${_IMAGE_REPO}:${COMMIT_SHA}"
+      - "--image='${_IMAGE_REPO}:${COMMIT_SHA}'"
       - "--trigger-topic=prestashop-order-data"
       - "--memory=256Mi"
       - "--timeout=30s"
