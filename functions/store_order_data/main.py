@@ -18,6 +18,10 @@ def store_order_data(cloud_event):
     Expects body like: {"message": {"data": "<base64(JSON order_data)>"}}.
     """
     try:
+        message_id = cloud_event['id'] 
+        pprint({"message_id": message_id}, expand_all=True)
+        logger.info("Utilizando logger %s", message_id)
+        
         logger.info("******** Start*************")
         # Normalize the envelope to a dict
         raw = cloud_event.data
