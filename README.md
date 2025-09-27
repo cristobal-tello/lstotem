@@ -104,7 +104,7 @@ PAYLOAD='{"orderId": "MAKE-TEST-'"$(date +%s)"'", "dateOrder": "'"$(date -u +"%Y
 
 # Base64 encode the JSON string
 
-BASE64_PAYLOAD=$(echo -n "$PAYLOAD" | base64)
+BASE64_PAYLOAD=$(printf '%s' "$PAYLOAD" | base64 | tr -d '\n')
 
 # Use curl to send the CloudEvent with the correctly encoded payload
 

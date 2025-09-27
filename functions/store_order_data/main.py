@@ -3,78 +3,52 @@ import json
 import logging
 import re
 from typing import Optional
+from rich.pretty import pprint
+from rich import inspect
 
 import functions_framework
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-def _decode_payload_from_envelope(envelope) -> Optional[dict]:
-    """
-    Returns the JSON-decoded payload dict contained in Pub/Sub message.data,
-    or None on failure. Tolerates whitespace/newlines inside the base64.
-    """
-    # Case A: already a dict (best case)
-    if isinstance(envelope, dict):
-        msg = envelope.get("message", {})
-        b64 = msg.get("data")
-        if b64 is None:
-            return None
-        if isinstance(b64, str):
-            b64_bytes = re.sub(r"\s+", "", b64).encode("utf-8")
-        else:
-            # bytes/bytearray
-            b64_bytes = re.sub(rb"\s+", b"", b64)
-        try:
-            raw = base64.b64decode(b64_bytes, validate=False)
-            return json.loads(raw.decode("utf-8"))
-        except Exception:
-            return None
-
-    # Case B: bytes or str -> try normal JSON first
-    if isinstance(envelope, (bytes, bytearray)):
-        text = envelope.decode("utf-8", errors="ignore")
-    elif isinstance(envelope, str):
-        text = envelope
-    else:
-        return None
-
-    try:
-        obj = json.loads(text)
-        return _decode_payload_from_envelope(obj)  # recurse into Case A
-    except json.JSONDecodeError:
-        # JSON not parseable (likely due to raw newlines inside the "data" string)
-        # Fallback: extract the base64 between "data":"...".
-        m = re.search(r'"data"\s*:\s*"(?P<b64>.*?)"', text, flags=re.DOTALL)
-        if not m:
-            return None
-        b64_str = m.group("b64")
-        # Remove all whitespace/newlines that broke JSON
-        b64_str = re.sub(r"\s+", "", b64_str)
-        try:
-            raw = base64.b64decode(b64_str.encode("utf-8"), validate=False)
-            return json.loads(raw.decode("utf-8"))
-        except Exception:
-            return None
-
 @functions_framework.cloud_event
 def store_order_data(cloud_event):
     """
     Cloud Function triggered by a Pub/Sub message (CloudEvent).
-    Expects body like: {"message": {"data": "<base64(JSON payload)>"}}.
+    Expects body like: {"message": {"data": "<base64(JSON order_data)>"}}.
     """
     try:
-        payload = _decode_payload_from_envelope(cloud_event.data)
-        if payload is None:
-            logger.error("Could not decode payload from CloudEvent data.")
-            return "Bad Request: Invalid message format", 400
+        logger.info("******** Start*************")
+        # Normalize the envelope to a dict
+        raw = cloud_event.data
+        if isinstance(raw, (bytes, bytearray)):
+            logger.info("pasa 22")
+            text = raw.decode("utf-8", errors="ignore")
+        elif isinstance(raw, str):
+            logger.info("pasa 33")
+            text = raw
+        else:
+            logger.info("pasa 44")
+            text = json.dumps(raw)  # already a dict
+        
+        envelope = json.loads(text)
+        b64 = envelope["message"]["data"]
+        if isinstance(b64, str):
+            b64 = re.sub(r"\s+", "", b64).encode("utf-8")  # strip newlines/whitespace
+        message_data = base64.b64decode(b64).decode("utf-8")
+        
+        pprint(message_data, expand_all=True)
+        order_data = json.loads(message_data)
+        pprint(order_data, expand_all=True)
+
+        pprint(order_data.get("orderId"))
 
         # Extract fields
-        order_id = payload.get("orderId")
-        date_order = payload.get("dateOrder")
-        total_order = payload.get("totalOrder")
-        payment_type = payload.get("paymentType")
-        delivery_type = payload.get("deliveryType")
+        order_id = order_data.get("orderId")
+        date_order = order_data.get("dateOrder")
+        total_order = order_data.get("totalOrder")
+        payment_type = order_data.get("paymentType")
+        delivery_type = order_data.get("deliveryType")
 
         # Normalize totalOrder to a float if it comes as a string
         try:
@@ -88,6 +62,7 @@ def store_order_data(cloud_event):
         logger.info(f"  totalOrder   = {total_order} (parsed: {total_order_num})")
         logger.info(f"  paymentType  = {payment_type}")
         logger.info(f"  deliveryType = {delivery_type}")
+        logger.info("******** END *************")
 
     except Exception:
         logger.exception("Error processing message")
