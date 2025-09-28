@@ -1,41 +1,39 @@
+# We intentionally do NOT mount any data-persistence volume for Firestore.
+# The gcloud Firestore emulator (Native mode) is in-memory only and clears data
+# on shutdown, so persisting /data would be misleading.
+#
+# We DO mount the function source for live reload during local dev. Remove that
+# bind mount if you prefer image-only, rebuild-on-change workflow.
+
 version: "3.8"
 
 services:
-  # Your Cloud Function service
+  # Cloud Function (local dev)
   store-order-data:
     build:
       context: ./functions/store_order_data
-
-    container_name: lstotem_store-order-data # Optional, but good practice
-
-    # Ensures the emulator starts before the function tries to connect
+    container_name: lstotem_store-order-data
     depends_on:
       - firestore-emulator
-
-    # This volume is the key to live reloading!
+    # Live reload: edit code on host, container sees changes immediately
     volumes:
       - ./functions/store_order_data:/app
-
-    # Expose only the function's HTTP port.
     ports:
-      - "8080:8080"
-
+      - "8080:8080" # function HTTP
     restart: always
-
     environment:
       FIRESTORE_EMULATOR_HOST: "firestore-emulator:8080"
+      GOOGLE_CLOUD_PROJECT: "lstotem"
       FUNCTION_TARGET: store_order_data
+      PYTHONUNBUFFERED: "1"
 
-  # The Firestore Emulator service
+  # Firestore emulator (ephemeral; no persistence)
   firestore-emulator:
     image: gcr.io/google.com/cloudsdktool/cloud-sdk:448.0.0-emulators
     container_name: lstotem_firestore-emulator
-    command: gcloud emulators firestore start --host-port=0.0.0.0:8080
+    command: >
+      gcloud emulators firestore start
+      --host-port=0.0.0.0:8080
+      --project=lstotem
     ports:
-      - "8082:8080"
-      - "9090:9090"
-    volumes:
-      - firestore-data:/data
-
-volumes:
-  firestore-data:
+      - "8082:8080" # host can reach emulator at http://localhost:8082
