@@ -3,23 +3,23 @@ APP_NAME=$(PROJECT_NAME)_app
 
 up:
 	@echo "Building and starting services..."
-	docker-compose up --build -d
+	docker compose up --build -d
 
 build:
 	@echo "Building the 'store-order-data' service image..."
-	docker-compose build store-order-data
+	docker compose build store-order-data
 
 down:
 	@echo "Stopping and removing all services..."
-	docker-compose down
+	docker compose down
 
 logs:
 	@echo "Showing logs for all services..."
-	docker-compose logs -f
+	docker compose logs -f
 
 clean:
 	@echo "Stopping and removing all services and the firestore-data volume..."
-	docker-compose down -v
+	docker compose down -v
 
 send_message:
 	@echo "Sending test Pub/Sub message..."
@@ -41,3 +41,6 @@ list_orders:
 	@curl -s -X POST "http://localhost:8082/v1/projects/lstotem/databases/(default)/documents:runQuery" \
 	  -H "Content-Type: application/json" \
 	  -d '{"structuredQuery":{"from":[{"collectionId":"orders"}]}}'
+
+web_bash:
+	docker exec -it lstotem_web bash # Open an interactive bash shell in the running container

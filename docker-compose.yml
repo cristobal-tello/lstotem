@@ -5,16 +5,29 @@
 # We DO mount the function source for live reload during local dev. Remove that
 # bind mount if you prefer image-only, rebuild-on-change workflow.
 
-version: "3.8"
-
 services:
+  # Web app (local dev)
+  web:
+    build:
+      context: ./web
+    container_name: lstotem_web
+    volumes:
+      - ./web:/var/www/html
+    ports:
+      - "8081:8081"
+    restart: always
+    networks:
+      - lstotem-net
+
   # Cloud Function (local dev)
   store-order-data:
     build:
       context: ./functions/store_order_data
     container_name: lstotem_store-order-data
+    # Use 'service_healthy' to wait for the emulator to be running
     depends_on:
-      - firestore-emulator
+      firestore-emulator:
+        condition: service_healthy
     # Live reload: edit code on host, container sees changes immediately
     volumes:
       - ./functions/store_order_data:/app
@@ -22,10 +35,13 @@ services:
       - "8080:8080" # function HTTP
     restart: always
     environment:
+      # This is correct: refers to the service name and the internal port
       FIRESTORE_EMULATOR_HOST: "firestore-emulator:8080"
       GOOGLE_CLOUD_PROJECT: "lstotem"
       FUNCTION_TARGET: store_order_data
       PYTHONUNBUFFERED: "1"
+    networks:
+      - lstotem-net
 
   # Firestore emulator (ephemeral; no persistence)
   firestore-emulator:
@@ -37,3 +53,15 @@ services:
       --project=lstotem
     ports:
       - "8082:8080" # host can reach emulator at http://localhost:8082
+    # Add a healthcheck to ensure the function waits for the emulator to be ready
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "8080"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - lstotem-net
+
+networks:
+  lstotem-net:
+    driver: bridge
