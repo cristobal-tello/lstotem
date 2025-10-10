@@ -12,3 +12,7 @@ env/
 
 *.log
 *.tmp
+
+#### By me
+*.env.*
+web/bak/
