@@ -55,10 +55,11 @@ services:
       - "8082:8080" # host can reach emulator at http://localhost:8082
     # Add a healthcheck to ensure the function waits for the emulator to be ready
     healthcheck:
-      test: ["CMD", "nc", "-z", "localhost", "8080"]
-      interval: 5s
-      timeout: 3s
+      test: ["CMD", "curl", "-f", "http://localhost:8080"]
+      interval: 30s           # Check less frequently
+      timeout: 10s            # Allow more time for response
       retries: 5
+      start_period: 20s       # Give the 
     networks:
       - lstotem-net
 
