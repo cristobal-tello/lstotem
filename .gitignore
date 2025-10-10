@@ -14,5 +14,9 @@ env/
 *.tmp
 
 #### By me
+# Dont push any .env file
 *.env.*
-web/bak/
+# Firebase emulator
+firebase.json
+# Push data
+web/config.js
