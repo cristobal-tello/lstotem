@@ -1,3 +1,7 @@
+
+substitutions:
+  _REGION: europe-west1 # ⬅️ Define your region here
+
 options:
   logging: CLOUD_LOGGING_ONLY
 
@@ -11,11 +15,9 @@ steps:
       - deploy
       - store-order-data
       - --gen2
-      # Región cambiada a europe-west1
       - --region=${_REGION}
       - --runtime=python312
       - --source=functions/store_order_data
-      # --- CORRECCIÓN: El entry-point debe usar guiones bajos (snake_case) como el target en Python ---
       - --entry-point=store_order_data
       - --trigger-topic=prestashop-order-data
       - --memory=256Mi
@@ -31,15 +33,14 @@ steps:
       - deploy
       - notifier-order-milestone
       - --gen2
-      - --region=${_REGION}             # ✅ región compatible con Firestore eur3
+      - --region=${_REGION}
       - --runtime=python312
       - --source=functions/notifier_order_milestone
       - --entry-point=notifier_order_milestone
-      # --- ✅ Firestore trigger (sintaxis oficial Gen 2) ---
+      # --- Firestore trigger (Gen 2 syntax) ---
       - --trigger-event-filters=type=google.cloud.firestore.document.v1.updated
       - --trigger-event-filters=database=(default)
-      - --trigger-event-filters-path-pattern=document=documents/orders/{orderId}
-      # --- Configuración general ---
+      - --trigger-event-filters-path-pattern=document=orders/{orderId} # ⬅️ Correct path pattern
       - --memory=256Mi
       - --timeout=30s
       - "--set-env-vars=FUNCTION_TARGET=notifier_order_milestone"
