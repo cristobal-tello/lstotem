@@ -33,11 +33,11 @@ steps:
       - --runtime=python312
       - --source=functions/notifier_order_milestone
       - --entry-point=notifier_order_milestone
-      # --- FIX: Simplify filters to avoid parsing ambiguity with Gen 2 Eventarc ---
+      # --- FIX: Usar el formato de recurso de Eventarc más simple y compatible con gcloud ---
       - --trigger-event-filters=type=google.cloud.firestore.document.v1.written
-      # Combining database and resource path into a single resource filter
-      - --trigger-event-filters=resource=projects/${PROJECT_ID}/databases/(default)/documents/orders/{order_id}
-      # The database=(default) filter is implicitly included in the resource path above
+      # QUITAMOS el projects/${PROJECT_ID}/databases/(default) de la ruta del recurso
+      - --trigger-event-filters=resource=orders/{order_id}
+      # A veces, este formato más simple es el único que funciona correctamente en Gen 2.
       # --- Configuration ---
       - --memory=256Mi
       - --timeout=30s
