@@ -2,7 +2,7 @@ options:
   logging: CLOUD_LOGGING_ONLY
 
 steps:
-  # Step 1: Deploy Pub/Sub triggered function
+  # Step 1: Pub/Sub Trigger
   - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
     id: DeployStoreOrderData
     entrypoint: gcloud
@@ -14,13 +14,13 @@ steps:
       - --region=${_REGION}
       - --runtime=python312
       - --source=functions/store_order_data
-      - --entry-point=store_order_data   # ✅ corregido (sin guion)
+      - --entry-point=store_order_data
       - --trigger-topic=prestashop-order-data
       - --memory=256Mi
       - --timeout=30s
       - "--set-env-vars=FUNCTION_TARGET=store_order_data"
 
-  # Step 2: Deploy Firestore triggered function
+  # Step 2: Firestore Trigger
   - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
     id: DeployNotifierOrderMilestone
     entrypoint: gcloud
@@ -33,11 +33,11 @@ steps:
       - --runtime=python312
       - --source=functions/notifier_order_milestone
       - --entry-point=notifier_order_milestone
-      # --- Firestore trigger (válido en Gen2) ---
+      # --- Firestore trigger (correct syntax for Gen2 / Eventarc) ---
       - --trigger-event-filters=type=google.cloud.firestore.document.v1.updated
       - --trigger-event-filters=database=(default)
-      - --trigger-event-filters=resource=documents/orders/{order_id}
-      # --- Configuration ---
+      - --trigger-event-filters-path-pattern=document=documents/orders/{orderId}
+      # --- Config ---
       - --memory=256Mi
       - --timeout=30s
       - "--set-env-vars=FUNCTION_TARGET=notifier_order_milestone"
