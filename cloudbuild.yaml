@@ -2,7 +2,6 @@ options:
   logging: CLOUD_LOGGING_ONLY
 
 steps:
-  # Step 1: Pub/Sub Trigger
   - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
     id: DeployStoreOrderData
     entrypoint: gcloud
@@ -11,16 +10,15 @@ steps:
       - deploy
       - store-order-data
       - --gen2
-      - --region=${_REGION}
+      - --region=${_REGION}              # puedes mantener europe-southwest1
       - --runtime=python312
       - --source=functions/store_order_data
-      - --entry-point=store_order_data
+      - --entry-point=store_order_data   # ✅ corregido (sin guion)
       - --trigger-topic=prestashop-order-data
       - --memory=256Mi
       - --timeout=30s
       - "--set-env-vars=FUNCTION_TARGET=store_order_data"
 
-  # Step 2: Firestore Trigger
   - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
     id: DeployNotifierOrderMilestone
     entrypoint: gcloud
@@ -29,15 +27,15 @@ steps:
       - deploy
       - notifier-order-milestone
       - --gen2
-      - --region=${_REGION}
+      - --region=eur3                     # ✅ región de tu base de datos Firestore
       - --runtime=python312
       - --source=functions/notifier_order_milestone
       - --entry-point=notifier_order_milestone
-      # --- Firestore trigger (correct syntax for Gen2 / Eventarc) ---
+      # --- Firestore trigger (formato correcto para Gen 2 / Eventarc) ---
       - --trigger-event-filters=type=google.cloud.firestore.document.v1.updated
       - --trigger-event-filters=database=(default)
       - --trigger-event-filters-path-pattern=document=documents/orders/{orderId}
-      # --- Config ---
+      # --- Configuración general ---
       - --memory=256Mi
       - --timeout=30s
       - "--set-env-vars=FUNCTION_TARGET=notifier_order_milestone"
