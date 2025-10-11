@@ -33,12 +33,13 @@ steps:
       - --runtime=python312
       - --source=functions/notifier_order_milestone
       - --entry-point=notifier_order_milestone
-      # --- FIX: Use --trigger-event-filters for Gen 2 Functions ---
+      # --- FIX: Use 3 separate filters for Gen 2 Firestore Triggers ---
       - --trigger-event-filters=type=google.cloud.firestore.document.v1.written
-      # The 'written' event handles create, update, and delete, as per your updated Python code.
+      # The database must be explicitly specified (default)
+      - --trigger-event-filters=database=(default)
+      # The document path is specified via the full Eventarc resource path
       - --trigger-event-filters=resource=projects/${PROJECT_ID}/databases/(default)/documents/orders/{order_id}
       # --- Configuration ---
       - --memory=256Mi
       - --timeout=30s
-      # Environment variables are kept simple as Pusher was removed in the function logic
       - "--set-env-vars=FUNCTION_TARGET=notifier_order_milestone"
