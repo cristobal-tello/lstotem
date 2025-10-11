@@ -33,12 +33,11 @@ steps:
       - --runtime=python312
       - --source=functions/notifier_order_milestone
       - --entry-point=notifier_order_milestone
-      # --- FIX: Use 3 separate filters for Gen 2 Firestore Triggers ---
+      # --- FIX: Simplify filters to avoid parsing ambiguity with Gen 2 Eventarc ---
       - --trigger-event-filters=type=google.cloud.firestore.document.v1.written
-      # The database must be explicitly specified (default)
-      - --trigger-event-filters=database=(default)
-      # The document path is specified via the full Eventarc resource path
+      # Combining database and resource path into a single resource filter
       - --trigger-event-filters=resource=projects/${PROJECT_ID}/databases/(default)/documents/orders/{order_id}
+      # The database=(default) filter is implicitly included in the resource path above
       # --- Configuration ---
       - --memory=256Mi
       - --timeout=30s
