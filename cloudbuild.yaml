@@ -2,7 +2,7 @@ options:
   logging: CLOUD_LOGGING_ONLY
 
 steps:
-  # Step 1: Deploy the Topic Triggered Function (store-order-data)
+  # Step 1: Deploy Pub/Sub triggered function
   - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
     id: DeployStoreOrderData
     entrypoint: gcloud
@@ -14,13 +14,13 @@ steps:
       - --region=${_REGION}
       - --runtime=python312
       - --source=functions/store_order_data
-      - --entry-point=store_order_data
+      - --entry-point=store_order_data   # ✅ corregido (sin guion)
       - --trigger-topic=prestashop-order-data
       - --memory=256Mi
       - --timeout=30s
       - "--set-env-vars=FUNCTION_TARGET=store_order_data"
 
-  # Step 2: Deploy the Firestore Triggered Function (notifier-order-milestone)
+  # Step 2: Deploy Firestore triggered function
   - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
     id: DeployNotifierOrderMilestone
     entrypoint: gcloud
@@ -33,11 +33,10 @@ steps:
       - --runtime=python312
       - --source=functions/notifier_order_milestone
       - --entry-point=notifier_order_milestone
-      # --- FIX: Usar el formato de recurso de Eventarc más simple y compatible con gcloud ---
-      - --trigger-event-filters=type=google.cloud.firestore.document.v1.written
-      # QUITAMOS el projects/${PROJECT_ID}/databases/(default) de la ruta del recurso
-      - --trigger-event-filters=resource=orders/{order_id}
-      # A veces, este formato más simple es el único que funciona correctamente en Gen 2.
+      # --- Firestore trigger (válido en Gen2) ---
+      - --trigger-event-filters=type=google.cloud.firestore.document.v1.updated
+      - --trigger-event-filters=database=(default)
+      - --trigger-event-filters=resource=documents/orders/{order_id}
       # --- Configuration ---
       - --memory=256Mi
       - --timeout=30s
