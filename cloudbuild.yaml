@@ -2,6 +2,7 @@ options:
   logging: CLOUD_LOGGING_ONLY
 
 steps:
+  # Step 1: Deploy the Topic Triggered Function (store-order-data)
   - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
     id: DeployStoreOrderData
     entrypoint: gcloud
@@ -10,15 +11,18 @@ steps:
       - deploy
       - store-order-data
       - --gen2
-      - --region=${_REGION}              # puedes mantener europe-southwest1
+      # Región cambiada a europe-west1
+      - --region=europe-west1
       - --runtime=python312
       - --source=functions/store_order_data
-      - --entry-point=store_order_data   # ✅ corregido (sin guion)
+      # --- CORRECCIÓN: El entry-point debe usar guiones bajos (snake_case) como el target en Python ---
+      - --entry-point=store_order_data
       - --trigger-topic=prestashop-order-data
       - --memory=256Mi
       - --timeout=30s
       - "--set-env-vars=FUNCTION_TARGET=store_order_data"
 
+  # Step 2: Deploy the Firestore Triggered Function (notifier-order-milestone)
   - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
     id: DeployNotifierOrderMilestone
     entrypoint: gcloud
@@ -27,15 +31,16 @@ steps:
       - deploy
       - notifier-order-milestone
       - --gen2
-      - --region=eur3                     # ✅ región de tu base de datos Firestore
+      # Región cambiada a europe-west1 para compatibilidad con eur3
+      - --region=europe-west1
       - --runtime=python312
       - --source=functions/notifier_order_milestone
       - --entry-point=notifier_order_milestone
-      # --- Firestore trigger (formato correcto para Gen 2 / Eventarc) ---
-      - --trigger-event-filters=type=google.cloud.firestore.document.v1.updated
+      # Filtros de Eventarc Gen 2
+      - --trigger-event-filters=type=google.cloud.firestore.document.v1.written
       - --trigger-event-filters=database=(default)
-      - --trigger-event-filters-path-pattern=document=documents/orders/{orderId}
-      # --- Configuración general ---
+      - --trigger-event-filters=resource=documents/orders/{order_id}
+      # Configuration
       - --memory=256Mi
       - --timeout=30s
       - "--set-env-vars=FUNCTION_TARGET=notifier_order_milestone"
