@@ -1,11 +1,10 @@
-# cloudbuild.yaml
-
 options:
   logging: CLOUD_LOGGING_ONLY
 
 steps:
+  # Step 1: Deploy the Topic Triggered Function (store-order-data)
   - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
-    id: DeployCloudFunction
+    id: DeployStoreOrderData
     entrypoint: gcloud
     args:
       - functions
@@ -20,3 +19,25 @@ steps:
       - --memory=256Mi
       - --timeout=30s
       - "--set-env-vars=FUNCTION_TARGET=store_order_data"
+
+  # Step 2: Deploy the Firestore Triggered Function (notifier-order-milestone)
+  - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
+    id: DeployNotifierOrderMilestone
+    entrypoint: gcloud
+    args:
+      - functions
+      - deploy
+      - notifier-order-milestone
+      - --gen2
+      - --region=${_REGION}
+      - --runtime=python312
+      - --source=functions/notifier_order_milestone
+      - --entry-point=notifier_order_milestone
+      # --- Firestore Trigger Configuration ---
+      - --trigger-event=providers/cloud.firestore/eventTypes/document.create
+      - --trigger-resource=projects/${PROJECT_ID}/databases/(default)/documents/orders/{order_id}
+      # --- Configuration ---
+      - --memory=256Mi
+      - --timeout=30s
+      # You need to pass Pusher keys as environment variables for this function
+      - "--set-env-vars=FUNCTION_TARGET=notifier_order_milestone,PUSHER_APP_ID=${_PUSHER_APP_ID},PUSHER_APP_KEY=${_PUSHER_APP_KEY},PUSHER_APP_SECRET=${_PUSHER_APP_SECRET},PUSHER_CLUSTER=${_PUSHER_CLUSTER}"

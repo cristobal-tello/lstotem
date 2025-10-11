@@ -132,3 +132,121 @@ Don't forget to enable Cloud Function API
 You need to enable the Cloud Functions API because deploying a Cloud Function is an API operation performed by the Google Cloud SDK (gcloud), which runs within your Cloud Build job.
 
 Also Cloud Resource Manager API, Eventarc API, Cloud Run API
+
+In Prod, you can use next command from Google CLoud Shell to send a message to a topic:
+
+cloud pubsub topics publish prestashop-order-data --message='{"orderId": "'"$RANDOM"'", "dateOrder": "'$(date -u +"%Y-%m-%dT%H:%M:%SZ")'", "totalOrder": "'"$((RANDOM%500 + 100))"'.00", "paymentType": "credit_card", "deliveryType": "standard"}'
+
+
+Step 5: Firestore → Cloud Function → Pusher
+
+1. Firestore Data Model (Assumption)
+To efficiently count orders by the current date, your Firestore documents (e.g., in the orders collection) should have a dedicated field for the creation date, preferably as a Timestamp or a simple Date String (e.g., YYYY-MM-DD).
+
+
+
+Exportar a Hojas de cálculo
+2. Create the Cloud Function (The Trigger)
+You'll create a new Cloud Function that is triggered every time a new order document is created in your orders collection.
+
+Trigger Type:
+Firestore Trigger: onWrite or onCreate on the orders/{orderId} collection.
+
+Function Logic:
+The function will execute the following steps:
+
+Determine Current Date: Get the date string for the new order (e.g., 2025-10-11).
+
+Count Orders: Query Firestore to count all documents in the orders collection where the dateString matches the current date.
+
+Check Condition: Check if the total count is a multiple of 10 (e.g., 10, 20, 30, ...).
+
+Send Pusher Event: If the condition is met, use the Pusher SDK to send your event.
+
+JavaScript
+
+// Example Node.js Cloud Function (pusherNotifier.js)
+
+const functions = require('@google-cloud/functions-framework');
+const { Firestore } = require('@google-cloud/firestore');
+const Pusher = require('pusher');
+
+// Initialize Firestore and Pusher (using environment variables for secrets)
+const db = new Firestore();
+const pusher = new Pusher({
+    appId: process.env.PUSHER_APP_ID,
+    key: process.env.PUSHER_APP_KEY,
+    secret: process.env.PUSHER_APP_SECRET,
+    cluster: process.env.PUSHER_CLUSTER,
+    useTLS: true,
+});
+
+/**
+ * Triggered when a new order document is created in Firestore.
+ * @param {!object} snap The Firestore document snapshot.
+ * @param {!object} context The event context.
+ */
+exports.pusherNotifier = functions.firestore
+    .document('orders/{orderId}')
+    .onCreate(async (snap, context) => {
+
+    const newOrder = snap.data();
+    const todayDateString = newOrder.dateString; // e.g., '2025-10-11'
+
+    if (!todayDateString) {
+        console.error("New order document is missing the 'dateString' field.");
+        return null;
+    }
+
+    // --- 1. Query Firestore for today's orders ---
+    const ordersRef = db.collection('orders');
+    const snapshot = await ordersRef.where('dateString', '==', todayDateString).get();
+
+    const orderCount = snapshot.size;
+
+    console.log(`Today's order count for ${todayDateString}: ${orderCount}`);
+
+    // --- 2. Check the condition: multiple of 10 (10, 20, 30, etc.) ---
+    if (orderCount > 0 && orderCount % 10 === 0) {
+        console.log(`Condition met! Sending Pusher event for count: ${orderCount}`);
+
+        // --- 3. Send the Pusher Event ---
+        try {
+            const pusherResponse = await pusher.trigger(
+                'order-channel', // Channel name
+                'count-milestone', // Event name
+                {
+                    message: `Milestone reached: ${orderCount} orders today!`,
+                    total_orders_today: orderCount,
+                }
+            );
+            console.log('Pusher event sent successfully:', pusherResponse);
+        } catch (error) {
+            console.error('Failed to send Pusher event:', error);
+        }
+    } else {
+        console.log('Condition not met. No event sent.');
+    }
+    
+    return null;
+});
+3. Deployment Steps
+Setup the Cloud Function:
+
+Deploy the function using the Firebase CLI (recommended for Firestore Triggers) or the Google Cloud CLI (gcloud).
+
+Set the trigger to be the Firestore collection path: projects/YOUR_PROJECT_ID/databases/(default)/documents/orders/{orderId} on the onCreate event.
+
+Set Environment Variables:
+
+Ensure all your Pusher credentials are set as environment variables on the deployed Cloud Function:
+
+PUSHER_APP_ID
+
+PUSHER_APP_KEY
+
+PUSHER_APP_SECRET
+
+PUSHER_CLUSTER
+
+This approach is highly efficient because the function is only invoked when data changes, and it directly uses the robust Firestore change detection mechanism, making it the most reliable solution for your requirement.

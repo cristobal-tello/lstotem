@@ -15,8 +15,7 @@ env/
 
 #### By me
 # Dont push any .env file
-*.env.*
+.env*
 # Firebase emulator
 firebase.json
-# Push data
-web/config.js
+.firebaserc

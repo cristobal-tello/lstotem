@@ -6,6 +6,29 @@
 # bind mount if you prefer image-only, rebuild-on-change workflow.
 
 services:
+  # Cloud Function for Pusher Auth (local dev)
+  pusher-auth:
+    build:
+      context: ./functions/pusher_auth
+    container_name: lstotem_pusher-auth
+    volumes:
+      - ./functions/pusher_auth:/app
+      - /app/node_modules 
+    ports:
+      - "8090:8080"  # expose function on localhost:8090
+    restart: always
+    environment:
+      FUNCTION_TARGET: pusherAuth
+      GOOGLE_CLOUD_PROJECT: ${GOOGLE_CLOUD_PROJECT}
+      PUSHER_APP_ID: ${PUSHER_APP_ID}
+      PUSHER_APP_KEY: ${PUSHER_APP_KEY}
+      PUSHER_APP_SECRET: ${PUSHER_APP_SECRET}
+      PUSHER_CLUSTER: ${PUSHER_CLUSTER}
+    networks:
+      - lstotem-net
+    env_file:
+      - .env 
+
   # Web app (local dev)
   web:
     build:
@@ -19,7 +42,7 @@ services:
     networks:
       - lstotem-net
 
-  # Cloud Function (local dev)
+  # Cloud Function
   store-order-data:
     build:
       context: ./functions/store_order_data
@@ -35,13 +58,43 @@ services:
       - "8080:8080" # function HTTP
     restart: always
     environment:
-      # This is correct: refers to the service name and the internal port
       FIRESTORE_EMULATOR_HOST: "firestore-emulator:8080"
-      GOOGLE_CLOUD_PROJECT: "lstotem"
+      GOOGLE_CLOUD_PROJECT: ${GOOGLE_CLOUD_PROJECT}
       FUNCTION_TARGET: store_order_data
       PYTHONUNBUFFERED: "1"
     networks:
       - lstotem-net
+    env_file:
+      - .env
+  
+  notifier-order-milestone:
+    build:
+      context: ./functions/notifier_order_milestone
+    container_name: lstotem_notifier-order-milestone
+    # Wait for the Firestore emulator to be ready
+    depends_on:
+      firestore-emulator:
+        condition: service_healthy
+    # Live reload: assumes code is in ./functions/notifier_order_milestone
+    volumes:
+      - ./functions/notifier_order_milestone:/app
+    ports:
+      - "8083:8080" # New port to avoid conflict with store-order-data (8080)
+    restart: always
+    environment:
+      FIRESTORE_EMULATOR_HOST: "firestore-emulator:8080"
+      GOOGLE_CLOUD_PROJECT: ${GOOGLE_CLOUD_PROJECT}
+      FUNCTION_TARGET: notifier_order_milestone
+      PYTHONUNBUFFERED: "1"
+      # Pusher environment variables needed by this function
+      PUSHER_APP_ID: ${PUSHER_APP_ID}
+      PUSHER_APP_KEY: ${PUSHER_APP_KEY}
+      PUSHER_APP_SECRET: ${PUSHER_APP_SECRET}
+      PUSHER_CLUSTER: ${PUSHER_CLUSTER}
+    networks:
+      - lstotem-net
+    env_file:
+      - .env
 
   # Firestore emulator (ephemeral; no persistence)
   firestore-emulator:

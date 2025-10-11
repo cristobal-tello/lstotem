@@ -1,5 +1,7 @@
-PROJECT_NAME=ls_totem
-APP_NAME=$(PROJECT_NAME)_app
+include .env
+
+APP_NAME=$(GOOGLE_CLOUD_PROJECT)_app
+PUSHER_MSG=$(MESSAGE)$(shell od -An -N2 -i /dev/random | tr -d ' ')
 
 up:
 	@echo "Building and starting services..."
@@ -21,7 +23,9 @@ clean:
 	@echo "Stopping and removing all services and the firestore-data volume..."
 	docker compose down -v
 
-send_message:
+publish_to_topic:
+# Why your-project-id in "//pubsub.googleapis.com/projects/your-project-id/topics/prestashop-order-data"" is Ignored Locally
+# The emulator relies on the environment variable GOOGLE_CLOUD_PROJECT for its project context.
 	@echo "Sending test Pub/Sub message..."
 	@epoch=$$(date +%s); \
 	now=$$(date -u +"%Y-%m-%dT%H:%M:%SZ"); \
@@ -42,5 +46,23 @@ list_orders:
 	  -H "Content-Type: application/json" \
 	  -d '{"structuredQuery":{"from":[{"collectionId":"orders"}]}}'
 
+milestone_log:
+	docker compose logs -f notifier-order-milestone
+
+firestore_log:
+	docker logs lstotem_firestore-emulator
+
 web_bash:
 	docker exec -it lstotem_web bash # Open an interactive bash shell in the running container
+
+web_push:
+	@echo "--- Triggering Pusher Event on [$(PUSHER_CHANNEL)] with Data: $(PUSHER_MSG) ---"
+	@JSON_PAYLOAD=$$(printf '{"name":"%s","channel":"%s","data":"%s"}' "$(PUSHER_EVENT)" "$(PUSHER_CHANNEL)" "$(PUSHER_MSG)"); \
+	BODY_MD5=$$(printf "%s" "$$JSON_PAYLOAD" | openssl md5 -binary | xxd -p -c 256); \
+	TIMESTAMP=$$(date +%s); \
+	STRING_TO_SIGN=$$(printf "POST\n/apps/%s/events\nauth_key=%s&auth_timestamp=%s&auth_version=1.0&body_md5=%s" "$(PUSHER_APP_ID)" "$(PUSHER_APP_KEY)" $$TIMESTAMP $$BODY_MD5); \
+	SIGNATURE=$$(printf "%s" "$$STRING_TO_SIGN" | openssl dgst -sha256 -hmac "$(PUSHER_APP_SECRET)" | cut -d ' ' -f2); \
+	curl -s -X POST "https://api-$(PUSHER_CLUSTER).pusher.com/apps/$(PUSHER_APP_ID)/events?auth_key=$(PUSHER_APP_KEY)&auth_timestamp=$$TIMESTAMP&auth_version=1.0&body_md5=$$BODY_MD5&auth_signature=$$SIGNATURE" \
+		-H "Content-Type: application/json" \
+		-d "$$JSON_PAYLOAD" \
+	&& echo "✅ Event sent successfully!" || echo "❌ Failed to send event"
