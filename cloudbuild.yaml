@@ -33,11 +33,12 @@ steps:
       - --runtime=python312
       - --source=functions/notifier_order_milestone
       - --entry-point=notifier_order_milestone
-      # --- Firestore Trigger Configuration ---
-      - --trigger-event=providers/cloud.firestore/eventTypes/document.create
-      - --trigger-resource=projects/${PROJECT_ID}/databases/(default)/documents/orders/{order_id}
+      # --- FIX: Use --trigger-event-filters for Gen 2 Functions ---
+      - --trigger-event-filters=type=google.cloud.firestore.document.v1.written
+      # The 'written' event handles create, update, and delete, as per your updated Python code.
+      - --trigger-event-filters=resource=projects/${PROJECT_ID}/databases/(default)/documents/orders/{order_id}
       # --- Configuration ---
       - --memory=256Mi
       - --timeout=30s
-      # You need to pass Pusher keys as environment variables for this function
-      - "--set-env-vars=FUNCTION_TARGET=notifier_order_milestone,PUSHER_APP_ID=${_PUSHER_APP_ID},PUSHER_APP_KEY=${_PUSHER_APP_KEY},PUSHER_APP_SECRET=${_PUSHER_APP_SECRET},PUSHER_CLUSTER=${_PUSHER_CLUSTER}"
+      # Environment variables are kept simple as Pusher was removed in the function logic
+      - "--set-env-vars=FUNCTION_TARGET=notifier_order_milestone"
