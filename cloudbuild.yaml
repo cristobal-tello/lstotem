@@ -1,6 +1,6 @@
 
 substitutions:
-  _REGION: europe-west1 # ⬅️ Define your region here
+  _REGION: europe-southwest1
 
 options:
   logging: CLOUD_LOGGING_ONLY
