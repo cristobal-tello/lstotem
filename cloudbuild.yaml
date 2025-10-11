@@ -31,16 +31,15 @@ steps:
       - deploy
       - notifier-order-milestone
       - --gen2
-      # Región cambiada a europe-west1 para compatibilidad con eur3
-      - --region=europe-west1
+      - --region=europe-west1             # ✅ región compatible con Firestore eur3
       - --runtime=python312
       - --source=functions/notifier_order_milestone
       - --entry-point=notifier_order_milestone
-      # Filtros de Eventarc Gen 2
-      - --trigger-event-filters=type=google.cloud.firestore.document.v1.written
+      # --- ✅ Firestore trigger (sintaxis oficial Gen 2) ---
+      - --trigger-event-filters=type=google.cloud.firestore.document.v1.updated
       - --trigger-event-filters=database=(default)
-      - --trigger-event-filters=resource=documents/orders/{order_id}
-      # Configuration
+      - --trigger-event-filters-path-pattern=document=documents/orders/{orderId}
+      # --- Configuración general ---
       - --memory=256Mi
       - --timeout=30s
       - "--set-env-vars=FUNCTION_TARGET=notifier_order_milestone"
