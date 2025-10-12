@@ -28,7 +28,6 @@ def notifier_order_milestone(event):
     logging.info(f"SUCCESS: Triggered by new document in 'orders' collection. ID: {order_id}")
     
     try:
-        # Get the data from the newly created document snapshot
         new_order_data = event.data.after.to_dict()
         logging.info(f"Data for new order '{order_id}': {new_order_data}")
     except Exception as e:
