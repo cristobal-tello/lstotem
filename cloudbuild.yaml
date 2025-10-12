@@ -6,7 +6,6 @@ options:
   logging: CLOUD_LOGGING_ONLY
 
 steps:
-  # Step 1: Deploy the Topic Triggered Function (store-order-data)
   - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
     id: DeployStoreOrderData
     entrypoint: gcloud
@@ -24,7 +23,6 @@ steps:
       - --timeout=30s
       - "--set-env-vars=FUNCTION_TARGET=store_order_data"
 
-  # Step 2: Deploy the Firestore Triggered Function (notifier-order-milestone)
   - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
     id: DeployNotifierOrderMilestone
     entrypoint: gcloud
@@ -37,10 +35,9 @@ steps:
       - --runtime=python312
       - --source=functions/notifier_order_milestone
       - --entry-point=notifier_order_milestone
-      # --- Firestore trigger (Gen 2 syntax) ---
       - --trigger-event-filters=type=google.cloud.firestore.document.v1.updated
       - --trigger-event-filters=database=(default)
-      - --trigger-event-filters-path-pattern=document=orders/{orderId} # ⬅️ Correct path pattern
+      - --trigger-event-filters-path-pattern=document=orders/{orderId}
       - --memory=256Mi
       - --timeout=30s
       - "--set-env-vars=FUNCTION_TARGET=notifier_order_milestone"

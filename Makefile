@@ -40,7 +40,10 @@ publish_to_topic:
 	  -H "ce-source: //pubsub.googleapis.com/projects/your-project-id/topics/prestashop-order-data" \
 	  -d "$$(printf '{"message":{"data":"%s"}}' "$$b64")"
 
-list_orders:
+firestore_log:
+	docker logs lstotem_firestore-emulator
+
+firestore_list_orders:
 	@echo "Querying $(COLLECTION) on $(PROJECT_NAME)..."
 	@curl -s -X POST "http://localhost:8082/v1/projects/lstotem/databases/(default)/documents:runQuery" \
 	  -H "Content-Type: application/json" \
@@ -48,9 +51,6 @@ list_orders:
 
 milestone_log:
 	docker compose logs -f notifier-order-milestone
-
-firestore_log:
-	docker logs lstotem_firestore-emulator
 
 web_bash:
 	docker exec -it lstotem_web bash # Open an interactive bash shell in the running container
