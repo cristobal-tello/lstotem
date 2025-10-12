@@ -19,7 +19,7 @@ steps:
       - --entry-point=store_order_data
       - --trigger-topic=prestashop-order-data
       - --memory=256Mi
-      - --timeout=30s
+      - --timeout=180s
 
   - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
     id: DeployNotifierOrderMilestone
@@ -38,4 +38,4 @@ steps:
     # CORRECCIÓN CLAVE: Usar path-pattern para la ruta del documento
     - --trigger-event-filters-path-pattern=document=orders/{order_id} 
     - --memory=256Mi
-    - --timeout=60s
+    - --timeout=180s
