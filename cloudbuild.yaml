@@ -35,6 +35,7 @@ steps:
     - --entry-point=notifier_order_milestone
     - --trigger-event-filters=type=google.cloud.firestore.document.v1.written
     - --trigger-event-filters=database=(default)
-    - --trigger-event-filters=resource=projects/lstotem-474822/databases/(default)/documents/orders/{order_id}
+    # CORRECCIÓN CLAVE: Usar path-pattern para la ruta del documento
+    - --trigger-event-filters-path-pattern=document=orders/{order_id} 
     - --memory=256Mi
     - --timeout=60s
