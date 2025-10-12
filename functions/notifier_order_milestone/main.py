@@ -15,7 +15,7 @@ if emulator_host:
     logging.warning(f"DEV MODE: Firestore client connection configured for emulator at: {emulator_host}")
 
 @firestore_fn.on_document_written(document="orders/{order_id}")
-def notifier_order_milestone(event: firestore_fn.Event) -> None:
+def notifier_order_milestone(event, context) -> None:
     """
     Triggers on new order creation and logs the data of the inserted document.
     """
