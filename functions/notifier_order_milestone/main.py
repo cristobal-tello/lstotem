@@ -1,56 +1,52 @@
-# main.py para notifier_order_milestone
+# main.py para notifier_order_milestone (Con Initialisation Check)
 
 import logging
 import firebase_admin
 import functions_framework
 import json
-
-# LIBRERÍA CLAVE: Usamos google.events para decodificar el payload binario de Firestore (Protobuf)
-# Asegúrate que google-events está en requirements.txt
 from google.events.cloud.firestore import v1 as firestoredata
 
-# Inicializa Firebase Admin SDK (útil si accedes a otros servicios de Firebase)
-firebase_admin.initialize_app()
+# --- INICIALIZACIÓN GLOBALES ---
+# Ejecutar initialize_app() dentro de un bloque try para que el framework se inicie
+try:
+    firebase_admin.initialize_app()
+    logging.info("Firebase Admin initialized successfully.")
+except Exception as e:
+    # Esto no debería pasar, pero si lo hace, no debe detener el arranque del container.
+    logging.error(f"FATAL INIT ERROR: Firebase Admin failed to initialize: {e}")
+    # Nota: Si falla aquí, las llamadas a Firebase dentro de la función fallarán.
+
 logging.basicConfig(level=logging.INFO)
 
-# CAMBIO CLAVE: Usamos el decorador estándar de CloudEvent de functions-framework
-# para asegurar la firma de UN solo argumento.
+# --- FUNCIÓN PRINCIPAL ---
 @functions_framework.cloud_event
 def notifier_order_milestone(cloudevent):
     """
     Recibe el evento binario de Firestore y lo decodifica usando Protobuf.
     """
     
-    # 1. Obtener los bytes de datos binarios
     event_data_bytes = cloudevent.data
     
     try:
-        # 2. Decodificar los bytes binarios de Protobuf
-        # Usamos from_json() con el payload, ya que cloudevent.data viene como una estructura que from_json puede interpretar.
-        # Si esto da error, intenta DocumentEventData.deserialize(event_data_bytes)
-        firestore_event = firestoredata.DocumentEventData.from_json(event_data_bytes)
+        # Usa DocumentEventData para decodificar los bytes Protobuf.
+        # Esto asume que el payload de cloudevent.data es la data binaria del evento Firestore.
+        # Si esto falla, puede ser porque el payload no es puro Protobuf.
+        firestore_event = firestoredata.DocumentEventData.from_json(event_data_bytes) 
         
-        # 3. Extraer Snapshots
+        # ... (resto de la lógica de parsing de firestore_event) ...
+        # (tu código de parsing anterior va aquí)
+        
         value = firestore_event.value 
         old_value = firestore_event.old_value
-
-        # Lógica de verificación de creación
-        if not old_value and value: 
-            
-            # 4. Extraer el ID del recurso
+        
+        if not old_value and value:
             resource_name = value.name
-            # La ruta es projects/.../databases/(default)/documents/orders/ID_DOCUMENTO
             order_id = resource_name.split("/documents/orders/")[1]
             logging.info(f"SUCCESS: Triggered by new document. ID: {order_id}")
-
-            # 5. Obtener los campos del documento (esto requiere otro paso de parsing o librería)
-            # Para simplificar, solo loguearemos el ID, ya que decodificar fields es complejo
-            logging.info(f"Document fields received.")
-            
         else:
-            logging.info("Event was not a document creation (update/delete). Skipping.")
+            logging.info("Event was not a document creation. Skipping.")
 
     except Exception as e:
-        logging.error(f"FATAL ERROR: Failed to parse CloudEvent/Protobuf data: {e}")
-        # Es crucial retornar aquí para evitar reintentos si el error no es temporal
-        return "Parsing Error", 400
+        # Si algo falla en la lógica de la función, al menos el contenedor ya está UP.
+        logging.error(f"RUNTIME ERROR: Failed to process event data: {e}")
+        return "Internal Server Error", 500

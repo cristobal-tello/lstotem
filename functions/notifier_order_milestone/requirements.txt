@@ -1,5 +1,4 @@
 firebase-admin>=5.0.0
 functions-framework==3.4.0
-firebase-functions==0.1.0 
 google-cloud-firestore
 google-events==0.12.0 
