@@ -20,7 +20,6 @@ steps:
       - --trigger-topic=prestashop-order-data
       - --memory=256Mi
       - --timeout=30s
-      # - "--set-env-vars=FUNCTION_TARGET=store_order_data"  <-- REMOVE THIS LINE
 
   - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
     id: DeployNotifierOrderMilestone
@@ -38,5 +37,4 @@ steps:
       - --trigger-event-filters=database=(default)
       - --trigger-event-filters-path-pattern=document=orders/{orderId}
       - --memory=256Mi
-      - --timeout=30s
-      # - "--set-env-vars=FUNCTION_TARGET=notifier_order_milestone" <-- REMOVE THIS LINE
+      - --timeout=30s      

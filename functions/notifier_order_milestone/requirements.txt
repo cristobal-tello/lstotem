@@ -1,3 +1,1 @@
-# functions/notifier_order_milestone/requirements.txt
-google-cloud-firestore
-firebase-admin
+firebase-admin==6.5.0
