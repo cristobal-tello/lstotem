@@ -1,70 +1,45 @@
-# notifier_order_milestone.py
+# main.py para notifier_order_milestone
 
 import logging
 import firebase_admin
-import json # <-- ¡Necesitas esta importación!
+from datetime import datetime
 
-# Importar las librerías necesarias
-from google.cloud import firestore
-import functions_framework 
+# Importar las librerías necesarias del SDK de Firebase Functions y Admin
+from firebase_functions import firestore_fn
+from firebase_admin import firestore
 
-# ... (resto de las inicializaciones)
+# Inicializa Firebase Admin SDK
+# Esto es necesario para que el SDK de Functions funcione correctamente.
+firebase_admin.initialize_app()
+logging.basicConfig(level=logging.INFO)
 
-@functions_framework.cloud_event
-def notifier_order_milestone(cloudevent):
+
+# La firma CORREGIDA DEBE ser solo (event) para Cloud Functions Gen 2 / Firebase SDK.
+# El decorador se encarga de:
+# 1. Asegurar la invocación con un solo argumento (resolviendo el TypeError).
+# 2. Decodificar el payload binario de Firestore (resolviendo el AttributeError).
+@firestore_fn.on_document_written(document="orders/{order_id}")
+def notifier_order_milestone(event: firestore_fn.Event) -> None:
     """
-    Triggers on new order creation and logs the data of the inserted document.
+    Se activa en la creación de un nuevo documento en la colección 'orders'.
     """
     
-    # CORRECCIÓN CLAVE: Decodificar el payload
-    if isinstance(cloudevent.data, bytes):
-        event_data_bytes = cloudevent.data
-        # Intenta decodificar de JSON
-        try:
-            event_data = json.loads(event_data_bytes.decode('utf-8'))
-        except (json.JSONDecodeError, UnicodeDecodeError):
-            logging.error("Failed to decode CloudEvent data into JSON.")
-            return
-    elif isinstance(cloudevent.data, dict):
-        # Si ya es un diccionario (menos común, pero manejable)
-        event_data = cloudevent.data
-    else:
-        logging.error(f"Unexpected data type received: {type(cloudevent.data)}")
+    # Verificamos si es un evento de creación:
+    # `before.exists` es Falso en creación, `after.exists` es Verdadero.
+    if not event.data.after.exists or event.data.before.exists:
+        logging.info("Event was not a document creation (it was an update or delete). Skipping function execution.")
         return
 
-    # Aquí comienza tu lógica original, ahora con 'event_data' como diccionario
-    
-    # 1. Obtener los DocumentSnapshots
-    after_snapshot = event_data.get("value")
-    before_snapshot = event_data.get("oldValue")
-
-    # 2. Recrear tu lógica de solo creación
-    is_creation = before_snapshot is None and after_snapshot is not None
-    
-    if not is_creation:
-        logging.info("Event was not a document creation. Skipping function execution.")
-        return
-
-    # 3. Extraer el ID del documento
-    # La ruta del recurso está en el snapshot 'value'
-    resource_name = after_snapshot.get("name")
-    # Manejo de error si el resource_name no tiene el formato esperado
-    try:
-        order_id = resource_name.split("/documents/orders/")[1]
-    except (AttributeError, IndexError):
-        logging.error(f"Could not parse order_id from resource name: {resource_name}")
-        return
-    
+    # Usar event.params para obtener el valor del wildcard {order_id} de la ruta.
+    order_id = event.params["order_id"]
     logging.info(f"SUCCESS: Triggered by new document in 'orders' collection. ID: {order_id}")
     
     try:
-        # 4. Extraer los campos del documento (esta lógica es correcta si el JSON es plano)
-        new_order_data = {}
-        for key, value in after_snapshot.get("fields", {}).items():
-            # Esta línea asume que cada valor es un tipo de Firestore anidado (stringValue, integerValue, etc.)
-            new_order_data[key] = list(value.values())[0] if isinstance(value, dict) and value else value
-        
+        # event.data.after es el nuevo DocumentSnapshot, to_dict() decodifica los datos.
+        new_order_data = event.data.after.to_dict()
         logging.info(f"Data for new order '{order_id}': {new_order_data}")
 
+        # Aquí continuarías con la lógica de notificación (e.g., enviar a otro servicio).
+        
     except Exception as e:
-        logging.error(f"Failed to extract data from new document '{order_id}': {e}")
+        logging.error(f"FATAL: Failed to extract data or process logic for document '{order_id}': {e}")
