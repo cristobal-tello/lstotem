@@ -1,4 +1,3 @@
 # functions/notifier_order_milestone/requirements.txt
-firebase-functions
 google-cloud-firestore
 firebase-admin

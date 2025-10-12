@@ -9,6 +9,7 @@ from firebase_admin import firestore
 firebase_admin.initialize_app()
 logging.basicConfig(level=logging.INFO)
 
+
 emulator_host = os.environ.get("FIRESTORE_EMULATOR_HOST")
 
 if emulator_host:
