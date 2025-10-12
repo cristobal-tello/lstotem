@@ -25,16 +25,16 @@ steps:
     id: DeployNotifierOrderMilestone
     entrypoint: gcloud
     args:
-      - functions
-      - deploy
-      - notifier-order-milestone
-      - --gen2
-      - --region=${_REGION}
-      - --runtime=python312
-      - --source=functions/notifier_order_milestone
-      - --entry-point=notifier_order_milestone
-      - --trigger-event-filters=type=google.cloud.firestore.document.v1.written
-      - --trigger-event-filters=database=(default)
-      - --trigger-event-filters-path-pattern=document=orders/{orderId}
-      - --memory=256Mi
-      - --timeout=30s      
+    - functions
+    - deploy
+    - notifier-order-milestone
+    - --gen2
+    - --region=${_REGION}
+    - --runtime=python312
+    - --source=functions/notifier_order_milestone
+    - --entry-point=notifier_order_milestone
+    - --trigger-event-filters=type=google.cloud.firestore.document.v1.written
+    - --trigger-event-filters=database=(default)
+    - --trigger-event-filters=resource=projects/lstotem-474822/databases/(default)/documents/orders/{order_id}
+    - --memory=256Mi
+    - --timeout=60s
