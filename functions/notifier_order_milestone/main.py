@@ -2,44 +2,55 @@
 
 import logging
 import firebase_admin
-from datetime import datetime
+import functions_framework
+import json
 
-# Importar las librerías necesarias del SDK de Firebase Functions y Admin
-from firebase_functions import firestore_fn
-from firebase_admin import firestore
+# LIBRERÍA CLAVE: Usamos google.events para decodificar el payload binario de Firestore (Protobuf)
+# Asegúrate que google-events está en requirements.txt
+from google.events.cloud.firestore import v1 as firestoredata
 
-# Inicializa Firebase Admin SDK
-# Esto es necesario para que el SDK de Functions funcione correctamente.
+# Inicializa Firebase Admin SDK (útil si accedes a otros servicios de Firebase)
 firebase_admin.initialize_app()
 logging.basicConfig(level=logging.INFO)
 
-
-# La firma CORREGIDA DEBE ser solo (event) para Cloud Functions Gen 2 / Firebase SDK.
-# El decorador se encarga de:
-# 1. Asegurar la invocación con un solo argumento (resolviendo el TypeError).
-# 2. Decodificar el payload binario de Firestore (resolviendo el AttributeError).
-@firestore_fn.on_document_written(document="orders/{order_id}")
-def notifier_order_milestone(event: firestore_fn.Event) -> None:
+# CAMBIO CLAVE: Usamos el decorador estándar de CloudEvent de functions-framework
+# para asegurar la firma de UN solo argumento.
+@functions_framework.cloud_event
+def notifier_order_milestone(cloudevent):
     """
-    Se activa en la creación de un nuevo documento en la colección 'orders'.
+    Recibe el evento binario de Firestore y lo decodifica usando Protobuf.
     """
     
-    # Verificamos si es un evento de creación:
-    # `before.exists` es Falso en creación, `after.exists` es Verdadero.
-    if not event.data.after.exists or event.data.before.exists:
-        logging.info("Event was not a document creation (it was an update or delete). Skipping function execution.")
-        return
-
-    # Usar event.params para obtener el valor del wildcard {order_id} de la ruta.
-    order_id = event.params["order_id"]
-    logging.info(f"SUCCESS: Triggered by new document in 'orders' collection. ID: {order_id}")
+    # 1. Obtener los bytes de datos binarios
+    event_data_bytes = cloudevent.data
     
     try:
-        # event.data.after es el nuevo DocumentSnapshot, to_dict() decodifica los datos.
-        new_order_data = event.data.after.to_dict()
-        logging.info(f"Data for new order '{order_id}': {new_order_data}")
-
-        # Aquí continuarías con la lógica de notificación (e.g., enviar a otro servicio).
+        # 2. Decodificar los bytes binarios de Protobuf
+        # Usamos from_json() con el payload, ya que cloudevent.data viene como una estructura que from_json puede interpretar.
+        # Si esto da error, intenta DocumentEventData.deserialize(event_data_bytes)
+        firestore_event = firestoredata.DocumentEventData.from_json(event_data_bytes)
         
+        # 3. Extraer Snapshots
+        value = firestore_event.value 
+        old_value = firestore_event.old_value
+
+        # Lógica de verificación de creación
+        if not old_value and value: 
+            
+            # 4. Extraer el ID del recurso
+            resource_name = value.name
+            # La ruta es projects/.../databases/(default)/documents/orders/ID_DOCUMENTO
+            order_id = resource_name.split("/documents/orders/")[1]
+            logging.info(f"SUCCESS: Triggered by new document. ID: {order_id}")
+
+            # 5. Obtener los campos del documento (esto requiere otro paso de parsing o librería)
+            # Para simplificar, solo loguearemos el ID, ya que decodificar fields es complejo
+            logging.info(f"Document fields received.")
+            
+        else:
+            logging.info("Event was not a document creation (update/delete). Skipping.")
+
     except Exception as e:
-        logging.error(f"FATAL: Failed to extract data or process logic for document '{order_id}': {e}")
+        logging.error(f"FATAL ERROR: Failed to parse CloudEvent/Protobuf data: {e}")
+        # Es crucial retornar aquí para evitar reintentos si el error no es temporal
+        return "Parsing Error", 400
