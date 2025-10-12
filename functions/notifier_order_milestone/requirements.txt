@@ -1,11 +1,4 @@
-# La versión más reciente de firebase-admin (la 6.5.0 es de 2018)
 firebase-admin>=5.0.0
-
-# Librería esencial para Cloud Functions Gen 2/CloudEvents
 functions-framework==3.4.0
-
-# SDK de Firebase Functions para Python (Necesario para el decorador @firestore_fn)
-firebase-functions==0.1.0 # O la última versión estable
-
-# Cliente de Firestore para la inicialización (necesario para el primer trigger)
+firebase-functions==0.1.0 
 google-cloud-firestore
