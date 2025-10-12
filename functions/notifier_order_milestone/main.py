@@ -20,7 +20,7 @@ if emulator_host:
 
 # --- Function Trigger ---
 @firestore_fn.on_document_written(document="orders/{order_id}")
-def notifier_order_milestone(event: firestore_fn.Event) -> None:
+def notifier_order_milestone(event) -> None:
     """
     Triggers on new order creation and logs the data of the inserted document.
     """
