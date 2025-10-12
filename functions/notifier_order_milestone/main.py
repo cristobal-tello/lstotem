@@ -2,39 +2,43 @@
 
 import logging
 import firebase_admin
+import json # <-- ¡Necesitas esta importación!
 
 # Importar las librerías necesarias
 from google.cloud import firestore
-import functions_framework # <--- ¡Asegúrate de que esta línea esté presente!
+import functions_framework 
 
-# La librería firestore_fn ya no es necesaria, la eliminamos si solo tienes esto
-# from firebase_functions import firestore_fn 
-from firebase_functions import firestore_fn # (Si la mantienes, no hace daño, pero es redundante)
+# ... (resto de las inicializaciones)
 
-
-# Inicializa Firebase Admin SDK
-firebase_admin.initialize_app()
-logging.basicConfig(level=logging.INFO)
-
-
-# CAMBIO CLAVE: Usamos el decorador estándar de CloudEvent de functions-framework
 @functions_framework.cloud_event
-def notifier_order_milestone(cloudevent): # <--- Usamos el nombre 'cloudevent' por convención
+def notifier_order_milestone(cloudevent):
     """
     Triggers on new order creation and logs the data of the inserted document.
     """
-    # El evento real de Firestore está anidado en cloudevent.data
-    event_data = cloudevent.data
-
-    # Aquí tienes que simular la estructura que daba el SDK de Firebase Functions
-    # Usaremos el objeto 'after' para obtener los datos
     
-    # 1. Obtener los DocumentSnapshots (usando la estructura de cloudevent.data)
+    # CORRECCIÓN CLAVE: Decodificar el payload
+    if isinstance(cloudevent.data, bytes):
+        event_data_bytes = cloudevent.data
+        # Intenta decodificar de JSON
+        try:
+            event_data = json.loads(event_data_bytes.decode('utf-8'))
+        except (json.JSONDecodeError, UnicodeDecodeError):
+            logging.error("Failed to decode CloudEvent data into JSON.")
+            return
+    elif isinstance(cloudevent.data, dict):
+        # Si ya es un diccionario (menos común, pero manejable)
+        event_data = cloudevent.data
+    else:
+        logging.error(f"Unexpected data type received: {type(cloudevent.data)}")
+        return
+
+    # Aquí comienza tu lógica original, ahora con 'event_data' como diccionario
+    
+    # 1. Obtener los DocumentSnapshots
     after_snapshot = event_data.get("value")
     before_snapshot = event_data.get("oldValue")
 
     # 2. Recrear tu lógica de solo creación
-    # Una creación ocurre si oldValue es nulo (no existe) y value no es nulo (existe)
     is_creation = before_snapshot is None and after_snapshot is not None
     
     if not is_creation:
@@ -42,19 +46,23 @@ def notifier_order_milestone(cloudevent): # <--- Usamos el nombre 'cloudevent' p
         return
 
     # 3. Extraer el ID del documento
-    # La ruta del recurso es: projects/.../documents/orders/orden_ID
+    # La ruta del recurso está en el snapshot 'value'
     resource_name = after_snapshot.get("name")
-    order_id = resource_name.split("/documents/orders/")[1]
+    # Manejo de error si el resource_name no tiene el formato esperado
+    try:
+        order_id = resource_name.split("/documents/orders/")[1]
+    except (AttributeError, IndexError):
+        logging.error(f"Could not parse order_id from resource name: {resource_name}")
+        return
     
     logging.info(f"SUCCESS: Triggered by new document in 'orders' collection. ID: {order_id}")
     
     try:
-        # 4. Extraer los campos del documento
-        # Los campos están en after_snapshot["fields"]
+        # 4. Extraer los campos del documento (esta lógica es correcta si el JSON es plano)
         new_order_data = {}
         for key, value in after_snapshot.get("fields", {}).items():
-            # Esto es simplificado, en producción necesitarías un helper para parsear los tipos de Firestore
-            new_order_data[key] = list(value.values())[0] if isinstance(value, dict) else value
+            # Esta línea asume que cada valor es un tipo de Firestore anidado (stringValue, integerValue, etc.)
+            new_order_data[key] = list(value.values())[0] if isinstance(value, dict) and value else value
         
         logging.info(f"Data for new order '{order_id}': {new_order_data}")
 
