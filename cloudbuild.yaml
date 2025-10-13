@@ -7,6 +7,19 @@ options:
   logging: CLOUD_LOGGING_ONLY
 
 steps:
+  - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
+    id: CreateArtifactRegistryRepo
+    entrypoint: gcloud
+    args:
+      - artifacts
+      - repositories
+      - create
+      - "${_SERVICE_NAME}"
+      - "--repository-format=docker"
+      - "--location=${_RUN_REGION}"
+      - "--description=Repositorio Docker para ${_SERVICE_NAME}"
+    allow_failure: true
+
   - name: "gcr.io/cloud-builders/docker"
     dir: web
     id: BuildWebAppImage
