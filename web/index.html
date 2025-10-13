@@ -1,153 +1,144 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pusher Notification Receiver</title>
-    <!-- Load Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Load Pusher Client Library -->
-    <script src="https://js.pusher.com/8.0.1/pusher.min.js"></script>
-    <style>
-        /* Custom styles for aesthetics */
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #f3f4f6;
-        }
-        .container-card {
-            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 0 15px -5px rgba(0, 0, 0, 0.04);
-            transition: transform 0.3s ease-in-out;
-        }
-        .message-item {
-            animation: fadeIn 0.5s ease-out;
-        }
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pusher Notification Receiver (Public)</title>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://js.pusher.com/8.0.1/pusher.min.js"></script>
+
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #f3f4f6;
+    }
+    .container-card {
+      box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1),
+                  0 0 15px -5px rgba(0,0,0,0.04);
+      transition: transform 0.3s ease-in-out;
+    }
+    .message-item {
+      animation: fadeIn 0.5s ease-out;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
 </head>
 <body class="p-4 sm:p-8 min-h-screen flex items-start justify-center">
+  <div class="w-full max-w-2xl bg-white rounded-xl container-card p-6 sm:p-8 mt-10">
+    <h1 class="text-3xl font-bold text-gray-800 mb-2">
+      Real-Time Notification Listener
+    </h1>
+    <p class="text-sm text-gray-500 mb-6">
+      Listening on Channel:
+      <code class="font-mono text-indigo-600">lstotem-public</code> |
+      Event:
+      <code class="font-mono text-indigo-600">total-orders</code>
+    </p>
 
-    <div class="w-full max-w-2xl bg-white rounded-xl container-card p-6 sm:p-8 mt-10">
-        <h1 class="text-3xl font-bold text-gray-800 mb-2">Real-Time Notification Listener</h1>
-        <p class="text-sm text-gray-500 mb-6">
-            Listening on Channel: `<code class="font-mono text-indigo-600">notifications</code>` | Event: `<code class="font-mono text-indigo-600">new-message</code>`
-        </p>
-
-        <!-- Connection Status -->
-        <div id="status-display" class="p-3 mb-6 rounded-lg text-sm font-medium transition-all">
-            Connecting...
-        </div>
-
-        <!-- Notification List -->
-        <h2 class="text-xl font-semibold text-gray-700 mb-3 border-b pb-2">Received Notifications</h2>
-        <ul id="notifications-list" class="space-y-3">
-            <!-- Messages will appear here -->
-            <li class="text-gray-500 italic">Waiting for the first real-time message...</li>
-        </ul>
+    <div id="status-display"
+         class="p-3 mb-6 rounded-lg text-sm font-medium transition-all bg-yellow-100 text-yellow-800">
+      Connecting...
     </div>
 
-    <script type="module" src="./config.js"></script>
+    <h2 class="text-xl font-semibold text-gray-700 mb-3 border-b pb-2">
+      Received Notifications
+    </h2>
+    <ul id="notifications-list" class="space-y-3">
+      <li class="text-gray-500 italic">Waiting for the first real-time message...</li>
+    </ul>
+  </div>
 
-<script>
-        const notificationsList = document.getElementById('notifications-list');
-        const statusDisplay = document.getElementById('status-display');
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+  <script>
+    // --- Configuration ---
+    const PUSHER_APP_KEY = "82c4ec18f6b4eccb9daf"; 
+    const PUSHER_CLUSTER = "eu";
+    
+    // CAMBIO CLAVE: Canal público, sin prefijo 'private-'
+    const CHANNEL_NAME = "Test140824"; 
+    const EVENT_NAME = "total-orders";
+    
+    // El AUTH_ENDPOINT YA NO ES NECESARIO para canales públicos.
+    // const AUTH_ENDPOINT = "http://localhost:8090/pusher/auth"; 
 
-        // Helper function to update the connection status UI
-        function updateStatus(state, message) {
-            statusDisplay.textContent = message;
-            statusDisplay.className = 'p-3 mb-6 rounded-lg text-sm font-medium transition-all'; // Reset classes
+    const notificationsList = document.getElementById("notifications-list");
+    const statusDisplay = document.getElementById("status-display");
+    
+    let pusher = null;
+    let channel = null;
 
-            switch (state) {
-                case 'connected':
-                    statusDisplay.classList.add('bg-green-100', 'text-green-800');
-                    break;
-                case 'disconnected':
-                case 'unavailable':
-                    statusDisplay.classList.add('bg-red-100', 'text-red-800');
-                    break;
-                case 'connecting':
-                default:
-                    statusDisplay.classList.add('bg-yellow-100', 'text-yellow-800');
-                    break;
-            }
-            console.log(`Pusher Status: ${state} - ${message}`);
-        }
+    // Función para actualizar el estado de conexión
+    function updateStatus(state, message) {
+      statusDisplay.textContent = message;
+      statusDisplay.className = "p-3 mb-6 rounded-lg text-sm font-medium transition-all";
+      if (state === "connected") {
+        statusDisplay.classList.add("bg-green-100", "text-green-800");
+      } else if (state === "disconnected" || state === "unavailable" || state === "error") {
+        statusDisplay.classList.add("bg-red-100", "text-red-800");
+      } else {
+        statusDisplay.classList.add("bg-yellow-100", "text-yellow-800");
+      }
+      console.log(`Pusher Status: ${state} - ${message}`);
+    }
 
-        // Helper function to display a received message
-        function displayNotification(data) {
-            // Remove the "Waiting" placeholder if it exists
-            if (notificationsList.querySelector('li.italic')) {
-                notificationsList.innerHTML = '';
-            }
+    // Función para mostrar la notificación en la lista
+    function displayNotification(data) {
+      if (notificationsList.querySelector("li.italic")) {
+        notificationsList.innerHTML = "";
+      }
+      
+      const messageText = data.message ? 
+                          `New order data received: ${data.message}` : 
+                          `Received event data: ${JSON.stringify(data)}`;
 
-            const message = data.message || JSON.stringify(data);
-            const listItem = document.createElement('li');
-            
-            listItem.className = 'message-item p-4 bg-indigo-50 border-l-4 border-indigo-500 rounded-lg text-gray-700 break-words';
-            listItem.innerHTML = `
-                <div class="flex justify-between items-center">
-                    <p class="font-medium">${message}</p>
-                    <span class="text-xs text-indigo-400">${new Date().toLocaleTimeString()}</span>
-                </div>
-                ${data.sender ? `<p class="text-xs mt-1 text-indigo-400">From: ${data.sender}</p>` : ''}
-            `;
-            
-            // Add to the top of the list (newest first)
-            notificationsList.prepend(listItem);
-        }
+      const li = document.createElement("li");
+      li.className = "p-4 bg-gray-50 rounded-lg border border-gray-200 message-item flex justify-between items-center";
+      
+      const content = document.createElement("p");
+      content.className = "text-gray-700 text-sm";
+      content.textContent = messageText;
+      
+      const time = document.createElement("span");
+      time.className = "text-xs text-gray-400 ml-4 whitespace-nowrap";
+      time.textContent = new Date().toLocaleTimeString();
 
-        // Initialize Pusher connection
-        try {
-            const pusher = new Pusher(PUSHER_APP_KEY, {
-                cluster: PUSHER_CLUSTER,
-                // Add any necessary options (like auth or encrypted if needed)
-            });
+      li.appendChild(content);
+      li.appendChild(time);
+      
+      notificationsList.prepend(li);
+    }
 
-            // 1. Subscribe to the channel
-            const channel = pusher.subscribe(CHANNEL_NAME);
+    // --- Inicialización y Conexión ---
+    function initializePusher() {
+      Pusher.logToConsole = true;
 
-            // 2. Bind to the specific event
-            channel.bind(EVENT_NAME, function(data) {
-                console.log('Event received:', data);
-                displayNotification(data);
-            });
-            
-            // 3. Handle connection state changes for UI
-            pusher.connection.bind('state_change', function(states) {
-                const newState = states.current;
-                const prevState = states.previous;
-                
-                let message = `Switched from ${prevState} to ${newState}.`;
-                
-                if (newState === 'connected') {
-                    message = 'Successfully connected to Pusher.';
-                } else if (newState === 'disconnected') {
-                    message = 'Pusher disconnected. Check your network or keys.';
-                } else if (newState === 'unavailable') {
-                    message = 'Connection is unavailable.';
-                }
+      // Crea la instancia de Pusher: SIN la configuración 'authEndpoint'
+      pusher = new Pusher(PUSHER_APP_KEY, {
+        cluster: PUSHER_CLUSTER,
+        forceTLS: true
+      });
 
-                updateStatus(newState, message);
-            });
+      // Escucha los eventos de conexión de Pusher
+      pusher.connection.bind('state_change', (states) => {
+        updateStatus(states.current, `Pusher is now ${states.current}.`);
+      });
 
-            // 4. Handle subscription success and errors
-            channel.bind('pusher:subscription_succeeded', function() {
-                console.log(`Successfully subscribed to channel: ${CHANNEL_NAME}`);
-            });
+      // Suscribe al canal público
+      channel = pusher.subscribe(CHANNEL_NAME);
+      
+      // Los canales públicos no necesitan 'pusher:subscription_succeeded' o manejo de errores de autenticación.
+      
+      // Escucha el evento específico
+      channel.bind(EVENT_NAME, (data) => {
+        displayNotification(data);
+      });
+    }
 
-            channel.bind('pusher:subscription_error', function(status) {
-                console.error(`Subscription error on channel ${CHANNEL_NAME}:`, status);
-                updateStatus('unavailable', `Subscription failed (Status: ${status}). Check channel name and permissions.`);
-            });
-
-        } catch (error) {
-            console.error('Pusher Initialization Error:', error);
-            updateStatus('error', 'Failed to initialize Pusher. Check your configuration.');
-        }
-
-    </script>
+    // Inicia la conexión cuando la página esté lista
+    document.addEventListener('DOMContentLoaded', initializePusher);
+  </script>
 </body>
 </html>
