@@ -1,10 +1,17 @@
 FROM nginx:alpine
 
+# Copiar el archivo (por ejemplo, index.html)
 COPY index.html /usr/share/nginx/html/index.html
 
-# COPY . /usr/share/nginx/html/
+# Listar el contenido del directorio y los permisos para depuración
+RUN ls -la /usr/share/nginx/html/ 
+
+# Aplicar el chown (para asegurar que Nginx pueda leerlo)
 RUN chown -R nginx:nginx /usr/share/nginx/html
+RUN chmod -R 755 /usr/share/nginx/html
+
+# Listar el contenido y los permisos de nuevo para verificar el chown
+RUN ls -la /usr/share/nginx/html/ 
 
 EXPOSE 80
-
 CMD ["nginx", "-g", "daemon off;"]
