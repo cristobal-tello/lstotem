@@ -19,3 +19,6 @@ env/
 # Firebase emulator
 firebase.json
 .firebaserc
+# Don't push dev dockerfile
+web/Dockerfile.dev
+web/nginx.conf.dev

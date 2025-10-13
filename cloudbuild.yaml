@@ -5,6 +5,37 @@ options:
   logging: CLOUD_LOGGING_ONLY
 
 steps:
+  - name: "gcr.io/cloud-builders/docker"
+    dir: web
+    id: BuildWebAppImage
+    args:
+      - "build"
+      - "-f" 
+      - "Dockerfile.prod" 
+      - "-t"
+      - "${_RUN_REGION}-docker.pkg.dev/$PROJECT_ID/${_SERVICE_NAME}/${_SERVICE_NAME}:latest"
+      - "."
+
+  - name: "gcr.io/cloud-builders/docker"
+    id: PushWebAppImage
+    args:
+      - "push"
+      - "${_RUN_REGION}-docker.pkg.dev/$PROJECT_ID/${_SERVICE_NAME}/${_SERVICE_NAME}:latest"
+
+  - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
+    id: DeployWebAppToCloudRun
+    entrypoint: gcloud
+    args:
+      - "run"
+      - "deploy"
+      - "${_SERVICE_NAME}"
+      - "--image=${_RUN_REGION}-docker.pkg.dev/$PROJECT_ID/${_SERVICE_NAME}/${_SERVICE_NAME}:latest"
+      - "--region=${_RUN_REGION}"
+      - "--platform=managed"
+      - "--allow-unauthenticated"
+      - "--port=80"
+      - "--memory=256Mi"
+
   - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
     id: DeployStoreOrderData
     entrypoint: gcloud
@@ -35,7 +66,6 @@ steps:
     - --entry-point=notifier_order_milestone
     - --trigger-event-filters=type=google.cloud.firestore.document.v1.written
     - --trigger-event-filters=database=(default)
-    # CORRECCIÓN CLAVE: Usar path-pattern para la ruta del documento
     - --trigger-event-filters-path-pattern=document=orders/{order_id} 
     - --memory=256Mi
     - --timeout=180s

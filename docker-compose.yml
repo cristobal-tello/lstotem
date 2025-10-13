@@ -9,6 +9,7 @@ services:
   web:
     build:
       context: ./web
+      dockerfile: Dockerfile.dev 
     container_name: lstotem_web
     volumes:
       - ./web:/var/www/html
