@@ -1,5 +1,7 @@
 substitutions:
   _REGION: europe-southwest1
+  _RUN_REGION: europe-southwest1
+  _SERVICE_NAME: lstotem-web
 
 options:
   logging: CLOUD_LOGGING_ONLY
