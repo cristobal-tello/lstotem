@@ -55,6 +55,9 @@ milestone_log:
 web_bash:
 	docker exec -it lstotem_web bash # Open an interactive bash shell in the running container
 
+web_log:
+	docker logs lstotem_web
+
 web_push:
 	@echo "--- Triggering Pusher Event on [$(PUSHER_CHANNEL)] with Data: $(PUSHER_MSG) ---"
 	@JSON_PAYLOAD=$$(printf '{"name":"%s","channel":"%s","data":"%s"}' "$(PUSHER_EVENT)" "$(PUSHER_CHANNEL)" "$(PUSHER_MSG)"); \

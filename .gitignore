@@ -1,3 +1,4 @@
+# Python
 pycache/
 *.pyc
 *.pyo
@@ -6,12 +7,34 @@ pycache/
 venv/
 env/
 
+# IDE files
 .vscode/
 .idea/
 .DS_Store
 
+# Log/Temporally files
 *.log
 *.tmp
+
+###> symfony/framework-bundle ###
+web/.env.local
+web/.env.local.php
+web/.env.*.local
+web/config/secrets/prod/prod.decrypt.private.php
+web/public/bundles/
+web/var/
+web/vendor/
+###< symfony/framework-bundle ###
+
+###> phpunit/phpunit ###
+web/phpunit.xml
+web/.phpunit.cache/
+###< phpunit/phpunit ###
+
+###> symfony/asset-mapper ###
+web/public/assets/
+###< symfony/asset-mapper ###
+
 
 #### By me
 # Dont push any .env file

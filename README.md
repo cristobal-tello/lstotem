@@ -250,3 +250,27 @@ PUSHER_APP_SECRET
 PUSHER_CLUSTER
 
 This approach is highly efficient because the function is only invoked when data changes, and it directly uses the robust Firestore change detection mechanism, making it the most reliable solution for your requirement.
+
+I just create a basic web app Symfony PHP app, I just run:
+$composer create-project symfony/skeleton:"6.3.*" myapp
+$cd myapp
+$composer require webapp
+
+This webapp application will receive events from Pusher (pusher.com). 
+For now, there is only 2 events, I'll have a PusherWebhookController
+that it will receive. The name of the events will be match with the name of the controller in the routes.yml and then the controller need to be run. How I can do it?
+
+
+
+
+daily-total-orders- and dayly-total-new_customer. These event needs to run a particular controller. And this controller will show the event data to the user using twig. How I can do that?
+
+
+
+
+
+For now, just 2 events will be receibed, total-daily-orders and total-daily-new-customers. 
+
+The goal is each event will be run a particular controller. For example, total-daily-orders needs to run the TotalDailyOrdersController, etc... 
+
+How do you desing this app? Note, the app needs to be build using the Symfony 6.3 PHP Framework.

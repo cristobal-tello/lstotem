@@ -1,0 +1,116 @@
+<script src="https://js.pusher.com/8.0.1/pusher.min.js"></script>
+<script>
+        function getBaseUrl() {
+            return window.location.protocol + '//' + window.location.host+'/';
+        }
+
+        function toCamelCase(str) {
+  // 1. Match any hyphen, underscore, or space
+  // 2. Followed by any character (which is captured in group $1)
+  // 3. The 'g' flag ensures it matches globally (all occurrences)
+  return str.replace(/[-_\s]+(.)?/g, (_, c) => c.toUpperCase());
+}
+
+        // --- Configuration ---
+        const PUSHER_APP_KEY = "82c4ec18f6b4eccb9daf"; 
+        const PUSHER_CLUSTER = "eu";
+        const CHANNEL_NAME = "Test140824"; 
+        
+        let pusher = null;
+        
+        /**
+         * Converts a JSON payload into a URL query string (e.g., ?id=123&type=order)
+         * @param {object} data - The Pusher payload.
+         * @returns {string} The URL query string.
+         */
+        function buildQueryString(data) {
+            const params = new URLSearchParams();
+            for (const key in data) {
+                if (data.hasOwnProperty(key)) {
+                    // Convert objects/arrays to JSON string for passing complex data
+                    const value = (typeof data[key] === 'object' && data[key] !== null) 
+                                ? JSON.stringify(data[key]) 
+                                : data[key];
+                    params.append(key, value);
+                }
+            }
+            return '?' + params.toString();
+        }
+
+        /**
+         * Handles the incoming Pusher event by constructing a URL and redirecting the user.
+         * @param {string} eventName - The name of the event received.
+         * @param {object} data - The payload data from the Pusher event.
+         */
+        function handleEvent(eventName, data) {
+            console.log(eventName);
+            console.log(data);
+
+         
+            
+            // 1. Construct the final URL with the payload data
+            const finalUrl = getBaseUrl() + eventName+buildQueryString(data);
+
+            // 2. Log the intent and update UI briefly
+            console.log(`Event triggered! Redirecting to: ${finalUrl}`);
+
+            // 3. Perform the redirection
+            window.location.href = finalUrl;
+        }
+
+        function initializePusher() {
+    // 1. Enable logging for debugging (Good practice)
+    Pusher.logToConsole = true;
+
+    // 2. Initialize Pusher
+    const pusher = new Pusher(PUSHER_APP_KEY, {
+        cluster: PUSHER_CLUSTER,
+        forceTLS: true
+    });
+
+    // --- Connection and Error Handling ---
+
+    // 3. Handle connection state changes (Good practice)
+    pusher.connection.bind('state_change', (states) => {
+        // Assuming updateStatus is a function to display the connection status
+ 
+    });
+
+    // 4. Handle connection errors
+    pusher.connection.bind('error', (err) => {
+        if (err.error.data.code === 4004) {
+            console.error("Pusher error: App key is invalid or unknown.");
+            // Optionally call updateStatus here too
+        } else {
+            console.error("Pusher connection error:", err);
+        }
+    });
+
+    // --- Channel Subscription and Event Handling ---
+
+    // 5. Subscribe to the public channel
+    const channel = pusher.subscribe(CHANNEL_NAME);
+
+    // 6. Bind a global handler to catch ALL events on this channel (The fix)
+    channel.bind_global(function(eventName, data) {
+        // This function correctly receives both the eventName and data
+        
+        // Exclude internal Pusher events (optional, but cleaner)
+        if (eventName.startsWith('pusher:')) {
+            // console.log(`Ignoring internal Pusher event: ${eventName}`);
+            return;
+        }
+
+        // Call your main handler function
+        handleEvent(eventName, data);
+    });
+
+    // 7. Handle channel subscription error (Very important for private/presence channels)
+    channel.bind('pusher:subscription_error', (status) => {
+        console.error(`Subscription to ${CHANNEL_NAME} failed with status: ${status}`);
+        // This is where you might handle authorization failure for private/presence channels
+    });
+}
+
+        document.addEventListener('DOMContentLoaded', initializePusher);
+    </script>

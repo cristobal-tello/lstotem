@@ -13,6 +13,8 @@ services:
     container_name: lstotem_web
     volumes:
       - ./web:/var/www/html
+      - /var/www/html/var
+      - /var/www/html/vendor
     ports:
       - "8081:8081"
     restart: always
