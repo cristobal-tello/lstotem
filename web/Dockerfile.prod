@@ -49,6 +49,7 @@ ENV APP_ENV=prod
 ENV APP_DEBUG=0
 ENV LOG_LEVEL=info
 ENV PORT=8080
+ENV DATABASE_URL=sqlite:///tmp/dummy_db.db
 
 # Configure PHP production settings (OPcache is critical for performance)
 RUN set -ex; \
