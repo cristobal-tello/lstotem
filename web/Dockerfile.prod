@@ -20,6 +20,7 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 ENV APP_ENV=prod
+ENV DATABASE_URL=
 
 COPY --from=composer_builder /app/vendor /app/vendor
 COPY config/ /app/config/
@@ -49,7 +50,7 @@ ENV APP_ENV=prod
 ENV APP_DEBUG=0
 ENV LOG_LEVEL=info
 ENV PORT=8080
-ENV DATABASE_URL=sqlite:///tmp/dummy_db.db
+ENV DATABASE_URL=
 
 # Configure PHP production settings (OPcache is critical for performance)
 RUN set -ex; \
