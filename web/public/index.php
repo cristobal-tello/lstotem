@@ -2,8 +2,18 @@
 
 use App\Kernel;
 
-require_once dirname(__DIR__).'/vendor/autoload_runtime.php';
+require_once dirname(__DIR__) . '/vendor/autoload_runtime.php';
 
 return function (array $context) {
-    return new Kernel($context['APP_ENV'], (bool) $context['APP_DEBUG']);
+    $env = getenv('APP_ENV');
+    if ($env === false) {
+        $env = $context['APP_ENV'] ?? 'dev';
+    }
+
+    $debug = getenv('APP_DEBUG');
+    if ($debug === false) {
+        $debug = $context['APP_DEBUG'] ?? 1;
+    }
+
+    return new Kernel($env, (bool) $debug);
 };
