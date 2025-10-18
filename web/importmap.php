@@ -25,4 +25,28 @@ return [
     '@hotwired/turbo' => [
         'version' => '7.3.0',
     ],
+    'bootstrap-icons/font/bootstrap-icons.min.css' => [
+        'version' => '1.13.1',
+        'type' => 'css',
+    ],
+    'bootstrap' => [
+        'version' => '5.3.8',
+    ],
+    '@popperjs/core' => [
+        'version' => '2.11.8',
+    ],
+    'bootstrap/dist/css/bootstrap.min.css' => [
+        'version' => '5.3.8',
+        'type' => 'css',
+    ],
+    'js-confetti' => [
+        'version' => '0.13.1',
+    ],
+    'tm-odometer' => [
+        'version' => '2.0.0',
+    ],
+    'tm-odometer/themes/odometer-theme-car.css' => [
+        'version' => '2.0.0',
+        'type' => 'css',
+    ],
 ];

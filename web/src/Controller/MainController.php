@@ -10,12 +10,12 @@ use Symfony\Component\DependencyInjection\ParameterBag\ParameterBagInterface;
 final class MainController extends AbstractController
 {
     #[Route('/', name: 'app_main')]
-    public function index(ParameterBagInterface $params): Response
+    public function index(ParameterBagInterface $params, string $pusherAppKey, string $pusherCluster, string $pusherChannel): Response
     {
-      //  dump($params->get('kernel.debug'));
-        //exit;
         return $this->render('main/index.html.twig', [
-            'controller_name' => 'MainController',
+            'pusher_app_key' => $pusherAppKey,
+            'pusher_cluster' => $pusherCluster,
+            'pusher_channel' => $pusherChannel,
         ]);
     }
 }

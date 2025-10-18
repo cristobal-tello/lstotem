@@ -10,12 +10,14 @@ use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 final class TotalDailyOrdersController extends AbstractController
 {
     #[Route('/TotalDailyOrders', name: 'app_total_daily_orders')]
-    public function index(Request $request): Response
+    public function index(Request $request, string $pusherAppKey, string $pusherCluster, string $pusherChannel): Response
     {
         $total = $request->query->get('total');
         return $this->render('total_daily_orders/index.html.twig', [
+            'pusher_app_key' => $pusherAppKey,
+            'pusher_cluster' => $pusherCluster,
+            'pusher_channel' => $pusherChannel,
             'total' => $total,
-            'controller_name' => 'TotalDailyOrdersController',
         ]);
     }
 }
