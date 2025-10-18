@@ -32,6 +32,7 @@ COPY assets/ /app/assets/
 COPY importmap.php /app/
 COPY symfony.lock composer.json composer.lock /app/
 
+RUN php bin/console importmap:install
 RUN php bin/console asset-map:compile --env=prod
 
 FROM php:8.3.6-apache
