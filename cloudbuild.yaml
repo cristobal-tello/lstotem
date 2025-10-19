@@ -66,6 +66,8 @@ steps:
       - --trigger-topic=prestashop-order-data
       - --memory=256Mi
       - --timeout=180s
+      - --build-pack=off
+      - --dockerfile=Dockerfile.pro
 
   - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
     id: DeployNotifierOrderMilestone
