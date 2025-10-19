@@ -2,6 +2,8 @@ import base64
 import json
 import logging
 import re
+import pusher
+import os
 from typing import Optional
 from google.cloud import firestore
 
@@ -11,6 +13,11 @@ if not logging.getLogger().handlers:
     logging.basicConfig(level=logging.INFO)
 
 logger = logging.getLogger(__name__)
+
+PUSHER_APP_ID = os.environ.get('PUSHER_APP_ID')
+PUSHER_KEY = os.environ.get('PUSHER_KEY')
+PUSHER_SECRET = os.environ.get('PUSHER_SECRET')
+PUSHER_CLUSTER = os.environ.get('PUSHER_CLUSTER')
 
 # Global variable to store the initialized client
 db = None 
@@ -29,6 +36,11 @@ def get_firestore_client():
 
 @functions_framework.cloud_event
 def store_order_data(cloud_event):
+    logger.info(PUSHER_APP_ID)
+    logger.info(PUSHER_KEY)
+    logger.info(PUSHER_SECRET)
+    logger.info(PUSHER_CLUSTER)
+
     """
     Cloud Function triggered by a Pub/Sub message (CloudEvent).
     """
