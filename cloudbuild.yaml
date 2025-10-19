@@ -25,8 +25,6 @@ steps:
     id: BuildWebAppImage
     args:
       - "build"
-      - "-f" 
-      - "Dockerfile.prod" 
       - "-t"
       - "${_RUN_REGION}-docker.pkg.dev/$PROJECT_ID/${_SERVICE_NAME}/${_SERVICE_NAME}:latest"
       - "."
@@ -66,8 +64,6 @@ steps:
       - --trigger-topic=prestashop-order-data
       - --memory=256Mi
       - --timeout=180s
-      - --build-pack=off
-      - --dockerfile=Dockerfile.pro
 
   - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
     id: DeployNotifierOrderMilestone
