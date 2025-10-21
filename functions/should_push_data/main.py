@@ -1,77 +1,158 @@
 import logging
 import functions_framework
-import json
+import os # Import the os module to access environment variables
+from datetime import datetime, timedelta, timezone
+from google.cloud import firestore
+from google.events.cloud.firestore import DocumentEventData, Document
+from typing import Dict, Any
 
-# Importaciones movilizadas:
-from google.events.cloud.firestore import DocumentEventData 
-import firebase_admin
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
-# Aseguramos el logging básico
-if not logging.getLogger().handlers:
-    logging.basicConfig(level=logging.INFO)
+# Global Firestore client (lazy initialization)
+_db = None
 
+# --- Configuration ---
+
+def get_push_threshold_minutes() -> int:
+    """
+    Gets the push threshold in minutes from the THRESHOLD_PUSH_DATA environment
+    variable, defaulting to 5 if not found or invalid.
+    """
+    default_minutes = 5
+    try:
+        # Retrieve the environment variable
+        threshold_str = os.environ.get('THRESHOLD_PUSH_DATA')
+        if threshold_str:
+            # Convert to integer
+            minutes = int(threshold_str)
+            if minutes > 0:
+                logger.info(f"Using configurable push threshold: {minutes} minutes.")
+                return minutes
+    except ValueError:
+        logger.warning(
+            f"Invalid value for THRESHOLD_PUSH_DATA environment variable. "
+            f"Using default of {default_minutes} minutes."
+        )
+    
+    logger.info(f"Using default push threshold: {default_minutes} minutes.")
+    return default_minutes
+
+
+# --- Helper Functions (Same as before) ---
+
+def get_firestore_client():
+    """Initializes and returns the Firestore client."""
+    global _db
+    if _db is None:
+        try:
+            _db = firestore.Client()
+            logger.info("Firestore client initialized successfully.")
+        except Exception as e:
+            logger.error(f"Failed to initialize Firestore client: {e}")
+            raise
+    return _db
+
+def _decode_firestore_fields(fields: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Decodes Firestore structured fields from the DocumentEventData 
+    into native Python types.
+    """
+    decoded_data = {}
+    for key, firestore_type_value in fields.items():
+        if isinstance(firestore_type_value, dict) and firestore_type_value:
+            decoded_data[key] = list(firestore_type_value.values())[0]
+        else:
+            decoded_data[key] = firestore_type_value
+    return decoded_data
+
+def _get_document_id_from_name(resource_name: str) -> str:
+    """Safely extracts the document ID from the Firestore resource name string."""
+    try:
+        path = resource_name.split("/documents/")[1]
+        doc_id = path.split("/")[-1]
+        return doc_id
+    except (IndexError, AttributeError):
+        logger.error(f"Could not parse document ID from resource: {resource_name}")
+        return None
+
+# --- Main Cloud Function ---
 
 @functions_framework.cloud_event
 def should_push_data(cloudevent):
     """
-    Recibe el evento binario de Firestore (CloudEvent Gen 2) y lo decodifica usando deserialize().
+    Triggered by a Firestore event. Performs rate-limit check immediately.
     """
-    
-    # --- Inicialización de Dependencias (Aislada) ---
     try:
-        if not firebase_admin._apps:
-            firebase_admin.initialize_app()
-            logging.info("Firebase Admin initialized successfully inside function.")
-    except Exception as e:
-        logging.error(f"RUNTIME ERROR: Firebase Admin failed to initialize: {e}")
-        return "Internal Server Error: Init Failed", 500
-    # ----------------------------------------------------------------------------------
+        logger.info("******** Start Processing: should_push_data *************")
+        logger.info("Processing CloudEvent ID: %s", cloudevent.get('id'))
 
-    # El payload es binario (Protobuf)
-    event_data_bytes = cloudevent.data
-    
-    try:
-        # CORRECCIÓN CLAVE: Usar deserialize() para el payload binario
-        firestore_event = DocumentEventData.deserialize(event_data_bytes) 
+        client = get_firestore_client()
         
-        # 1. Extraer Snapshots
-        value = firestore_event.value 
-        old_value = firestore_event.old_value
+        # --- 1. Immediate Rate Limiting Check ---
+        
+        # Get the threshold from configuration
+        threshold_minutes = get_push_threshold_minutes()
+        
+        # Fetch the single 'latest' push timestamp document
+        push_ref = client.collection('push').document('latest')
+        latest_push_doc = push_ref.get()
 
-        # Lógica de verificación: Solo queremos la CREACIÓN
-        if not old_value and value: 
-            
-            # 2. Extraer el ID del recurso
-            resource_name = value.name
-            try:
-                # Obtenemos el ID del documento
-                order_id = resource_name.split("/documents/orders/")[1]
-            except IndexError:
-                logging.error(f"Could not parse order_id from resource: {resource_name}")
-                return "Invalid Resource Format", 400
-            
-            logging.info(f"SUCCESS: Triggered by new document. ID: {order_id}")
+        # Calculate the time boundary
+        threshold_ago = datetime.now(timezone.utc) - timedelta(minutes=threshold_minutes)
 
-            # 3. Extraer Campos y decodificar los tipos de Firestore
-            new_order_data = {}
-            fields = value.fields if value and value.fields else {}
-            
-            for key, firestore_type_value in fields.items():
-                # Decodificación simplificada de los tipos de campo de Firestore
-                if isinstance(firestore_type_value, dict) and firestore_type_value:
-                    # El valor es el primer (y único) valor en el diccionario (ej: {"stringValue": "valor"})
-                    new_order_data[key] = list(firestore_type_value.values())[0]
-                else:
-                    new_order_data[key] = firestore_type_value
+        if latest_push_doc.exists:
+            last_timestamp = latest_push_doc.to_dict().get('lasttimestamp')
 
-            logging.info(f"Data for new order '{order_id}': {new_order_data}")
+            # Check if the last push was too recent
+            if isinstance(last_timestamp, datetime) and last_timestamp > threshold_ago:
+                logger.warning(
+                    f"Skipping push. Last push at {last_timestamp} is within the "
+                    f"{threshold_minutes}-minute threshold."
+                )
+                return "OK", 200 # Acknowledge and exit early
+        
+        logger.info("Rate limit check passed. Proceeding with event processing.")
+        
+        # --- 2. Event Processing ---
 
-        else:
-            logging.info("Event was not a document creation. Skipping.")
+        # Deserialize the event data only after the rate limit check passes
+        firestore_event = DocumentEventData.deserialize(cloudevent.data) 
+        value: Document = firestore_event.value 
+        old_value: Document = firestore_event.old_value
+        
+        # Check if this is a document creation event
+        if not value or old_value: 
+            logger.info("Event was not a document creation or value is missing. Skipping.")
+            return "OK", 200
 
-        return "OK"
+        # 3. Get the collection and document ID
+        resource_name = value.name
+        order_id = _get_document_id_from_name(resource_name)
+        
+        # BASIC VALIDATION: Ensure the event is for the expected 'orders' collection
+        if not order_id or 'orders' not in resource_name:
+            logger.error(f"Invalid resource name or not an 'orders' document: {resource_name}")
+            return "Invalid Resource Format", 400
+        
+        logger.info(f"SUCCESS: Triggered by new order document. ID: {order_id}")
+        
+        # 4. Extract and decode the new order data
+        fields = value.fields if value and value.fields else {}
+        new_order_data = _decode_firestore_fields(fields)
 
+        logger.info(f"Data for new order '{order_id}': {new_order_data}")
+
+        # --- Add your push notification logic here ---
+        logger.info("--> PUSHER SEND NOTIFICATION HERE <---")
+        
+        # 5. Record the timestamp of this successful push event
+        push_ref.set({'lasttimestamp': firestore.SERVER_TIMESTAMP})
+        
+        logger.info("******** End Processing: should_push_data *************")
+        return "OK", 200
+    
     except Exception as e:
-        # Captura cualquier error de parsing o lógica
-        logging.error(f"FATAL RUNTIME ERROR: Failed to process event data: {e}", exc_info=True)
+        logger.exception("Unexpected error in should_push_data: %s", e)
         return "Internal Server Error", 500
