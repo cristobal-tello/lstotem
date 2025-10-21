@@ -50,7 +50,7 @@ steps:
       - "--memory=256Mi"
 
   - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
-    id: DeployStoreOrderData
+    id: DeployStoreData
     entrypoint: gcloud
     args:
       - functions
@@ -66,17 +66,17 @@ steps:
       - --timeout=180s
 
   - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
-    id: DeployNotifierOrderMilestone
+    id: DeployShouldPushData
     entrypoint: gcloud
     args:
     - functions
     - deploy
-    - notifier-order-milestone
+    - should_push_data
     - --gen2
     - --region=${_REGION}
     - --runtime=python312
-    - --source=functions/notifier_order_milestone
-    - --entry-point=notifier_order_milestone
+    - --source=functions/should_push_data
+    - --entry-point=should_push_data
     - --trigger-event-filters=type=google.cloud.firestore.document.v1.written
     - --trigger-event-filters=database=(default)
     - --trigger-event-filters-path-pattern=document=orders/{order_id} 

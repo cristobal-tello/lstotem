@@ -1,5 +1,3 @@
-# main.py para notifier_order_milestone
-
 import logging
 import functions_framework
 import json
@@ -14,7 +12,7 @@ if not logging.getLogger().handlers:
 
 
 @functions_framework.cloud_event
-def notifier_order_milestone(cloudevent):
+def should_push_data(cloudevent):
     """
     Recibe el evento binario de Firestore (CloudEvent Gen 2) y lo decodifica usando deserialize().
     """

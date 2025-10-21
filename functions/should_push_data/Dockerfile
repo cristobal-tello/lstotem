@@ -1,5 +1,3 @@
-# functions/notifier_order_milestone/Dockerfile
-
 FROM python:3.12-slim
 
 # Set the working directory inside the container
@@ -15,6 +13,6 @@ COPY main.py .
 
 # Correct ENTRYPOINT (remove the --log-level flag, as discussed)
 ENTRYPOINT ["functions-framework", \
-            "--target", "notifier_order_milestone", \
+            "--target", "should_push_data", \
             "--port", "8080", \
             "--debug"]
