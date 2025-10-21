@@ -25,10 +25,59 @@ def get_firestore_client():
             raise
     return _db
 
+
+def _extract_pubsub_payload(ev):
+    """Robustly extract the JSON payload from a Pub/Sub CloudEvent envelope.
+
+    Accepts the functions-framework CloudEvent object or a plain dict.
+    Returns the decoded JSON object of the inner Pub/Sub message.
+    Raises ValueError for malformed or missing payloads.
+    """
+    # Get the raw event data (could be attribute or dict)
+    if hasattr(ev, "data"):
+        raw = ev.data
+    elif isinstance(ev, dict):
+        raw = ev.get("data") or ev
+    else:
+        raw = ev
+
+    # Normalize to a JSON string
+    if isinstance(raw, (bytes, bytearray)):
+        text = raw.decode("utf-8", errors="ignore")
+    elif isinstance(raw, str):
+        text = raw
+    else:
+        text = json.dumps(raw)
+
+    try:
+        envelope = json.loads(text)
+    except json.JSONDecodeError:
+        raise ValueError("CloudEvent data is not valid JSON")
+
+    # Try to find the base64 payload in common shapes
+    message_b64 = None
+    if isinstance(envelope, dict):
+        message_b64 = envelope.get("message", {}).get("data")
+        if not message_b64 and "data" in envelope and isinstance(envelope["data"], (str, bytes)):
+            # Some runtimes place the base64 data directly under data
+            message_b64 = envelope["data"]
+
+    if not message_b64:
+        raise ValueError("Pub/Sub envelope missing message.data")
+
+    try:
+        payload_text = base64.b64decode(message_b64).decode("utf-8")
+    except Exception as e:
+        raise ValueError(f"Failed to base64-decode message.data: {e}")
+
+    try:
+        return json.loads(payload_text)
+    except json.JSONDecodeError:
+        raise ValueError("Message payload is not valid JSON")
+
 @dataclass
 class Order:
     """Represents the structure of an order."""
-    orderId: str
     dateOrder: str
     totalOrder: float
     paymentType: str
@@ -40,7 +89,6 @@ class Order:
         """Creates an Order instance from a dictionary with validation."""
         try:
             return cls(
-                orderId=str(data["orderId"]),
                 dateOrder=data["dateOrder"],
                 totalOrder=float(data["totalOrder"]),
                 paymentType=data["paymentType"],
@@ -59,34 +107,22 @@ def store_data(cloud_event):
         logger.info("******** Start Processing *************")
         logger.info("Processing CloudEvent ID: %s", cloud_event['id'])
 
-        # 0. Initialize client and check if the last order was processed recently
-        client = get_firestore_client()
-        query = client.collection('orders').order_by('timestamp', direction=firestore.Query.DESCENDING).limit(1)
-        results = list(query.stream())
-        if results:
-            last_order = results[0].to_dict()
-            last_timestamp = last_order.get('timestamp')
+        # Decode Pub/Sub message robustly
+        order_payload = _extract_pubsub_payload(cloud_event)
+        logger.info("Received order payload keys: %s", list(order_payload.keys()) if isinstance(order_payload, dict) else type(order_payload))
 
-            # Firestore timestamps are timezone-aware (UTC). Compare with current UTC time.
-            two_minutes_ago = datetime.now(timezone.utc) - timedelta(minutes=2)
-
-            # If the last order is more recent than two minutes ago, log it and continue.
-            if last_timestamp > two_minutes_ago:
-                logger.info("A recent order was processed at %s (within the last 2 minutes). Continuing with current order.", last_timestamp)
-
-
-        # 1. Decode Pub/Sub message
-        order_payload = json.loads(base64.b64decode(cloud_event.data["message"]["data"]).decode("utf-8"))
-        logger.info("Received order payload: %s", order_payload)
-
-        # 2. Validate and structure the data
+        # Validate and structure the data
         order = Order.from_dict(order_payload)
 
-        # 3. Save the validated order to Firestore
-        doc_ref = client.collection('orders').document(order.orderId)
+        # Save the validated order to Firestore
+        client = get_firestore_client()
+        doc_ref = client.collection('orders').document('LASTTIMESTAMP')
         doc_ref.set(asdict(order))
 
-        logger.info("Order %s successfully saved. ******** End Processing *************", order.orderId)
+        # Log the full order content that was saved (safe-serialize any non-JSON types)
+        logger.info("Order successfully saved. Order data: %s", json.dumps(asdict(order), default=str))
+
+        logger.info("******** End Processing *************")
 
     except (json.JSONDecodeError, KeyError, TypeError) as e:
         logger.error(f"Failed to decode or parse Pub/Sub message: {e}")
