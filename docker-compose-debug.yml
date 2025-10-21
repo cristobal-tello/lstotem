@@ -2,11 +2,11 @@ version: "3.8"
 
 services:
   # Your Cloud Function service
-  store-order-data:
+  store-data:
     build:
-      context: ./functions/store_order_data
+      context: ./functions/store_data
     volumes:
-      - ./functions/store_order_data:/app
+      - ./functions/store_data:/app
     ports:
       # Maps the function's internal port 8080 to the host's port 8080.
       - "8080:8080"
@@ -14,7 +14,7 @@ services:
     environment:
       # The function will connect to the emulator using the service name and internal port.
       FIRESTORE_EMULATOR_HOST: "firestore-emulator:8080"
-      FUNCTION_TARGET: store_order_data
+      FUNCTION_TARGET: store_data
 
   # The Firestore Emulator service
   firestore-emulator:
@@ -22,7 +22,7 @@ services:
     command: gcloud emulators firestore start --host-port=0.0.0.0:8080
     ports:
       # Maps the emulator's internal port 8080 to a new host port, e.g., 8082.
-      # This avoids the conflict with the store-order-data service.
+      # This avoids the conflict with the store-data service.
       - "8082:8080"
       # The emulator also has a web UI. Access it at http://localhost:9090.
       - "9090:9090"

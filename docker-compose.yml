@@ -23,23 +23,23 @@ services:
     env_file:
       - .env
 
-  store-order-data:
+  store-data:
     build:
-      context: ./functions/store_order_data
+      context: ./functions/store_data
       dockerfile: Dockerfile.dev
-    container_name: lstotem_store-order-data
+    container_name: lstotem_store-data
     depends_on:
       firestore-emulator:
         condition: service_healthy
     volumes:
-      - ./functions/store_order_data:/app
+      - ./functions/store_data:/app
     ports:
       - "8080:8080"
     restart: always
     environment:
       FIRESTORE_EMULATOR_HOST: "firestore-emulator:8080"
       GOOGLE_CLOUD_PROJECT: ${GOOGLE_CLOUD_PROJECT}
-      FUNCTION_TARGET: store_order_data
+      FUNCTION_TARGET: store_data
       PYTHONUNBUFFERED: "1"
     networks:
       - lstotem-net

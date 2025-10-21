@@ -8,8 +8,8 @@ up:
 	docker compose up --build -d
 
 build:
-	@echo "Building the 'store-order-data' service image..."
-	docker compose build store-order-data
+	@echo "Building the 'store-data' service image..."
+	docker compose build store-data
 
 down:
 	@echo "Stopping and removing all services..."
@@ -39,6 +39,9 @@ publish_to_topic:
 	  -H "ce-type: google.cloud.pubsub.topic.v1.messagePublished" \
 	  -H "ce-source: //pubsub.googleapis.com/projects/your-project-id/topics/prestashop-order-data" \
 	  -d "$$(printf '{"message":{"data":"%s"}}' "$$b64")"
+
+store_data_log:
+	docker logs lstotem_store-data
 
 firestore_log:
 	docker logs lstotem_firestore-emulator

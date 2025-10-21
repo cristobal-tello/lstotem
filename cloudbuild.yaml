@@ -55,12 +55,12 @@ steps:
     args:
       - functions
       - deploy
-      - store-order-data
+      - store-data
       - --gen2
       - --region=${_REGION}
       - --runtime=python312
-      - --source=functions/store_order_data
-      - --entry-point=store_order_data
+      - --source=functions/store_data
+      - --entry-point=store_data
       - --trigger-topic=prestashop-order-data
       - --memory=256Mi
       - --timeout=180s

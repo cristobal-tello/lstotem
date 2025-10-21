@@ -50,7 +50,7 @@ I want to “simulate” the same way as we Google Cloud Function will run in Go
 Debug the cloud function from Visual studio code
 When the function is ready, I’ll do a push into a git repository. Then some kind of event needs to be fired to deploy the function to production.
 
-So, this is my main.py in the store_order_data directory: import base64
+So, this is my main.py in the store_data directory: import base64
 import json
 import functions_framework
 from google.cloud import firestore
@@ -60,7 +60,7 @@ from google.cloud import firestore
 db = firestore.Client()
 
 @functions_framework.cloud_event
-def store_order_data(cloud_event):
+def store_data(cloud_event):
 """
 Cloud Function triggered by a message on a Pub/Sub topic.
 It parses the order data and saves it to Firestore.
