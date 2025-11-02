@@ -13,8 +13,6 @@ logger = logging.getLogger(__name__)
 # Global Firestore client (lazy initialization)
 _db = None
 
-# --- Configuration ---
-
 def get_push_threshold_minutes() -> int:
     """
     Gets the push threshold in minutes from the THRESHOLD_PUSH_DATA environment
@@ -22,7 +20,6 @@ def get_push_threshold_minutes() -> int:
     """
     default_minutes = 5
     try:
-        # Retrieve the environment variable
         threshold_str = os.environ.get('THRESHOLD_PUSH_DATA')
         if threshold_str:
             # Convert to integer
@@ -38,9 +35,6 @@ def get_push_threshold_minutes() -> int:
     
     logger.info(f"Using default push threshold: {default_minutes} minutes.")
     return default_minutes
-
-
-# --- Helper Functions (Same as before) ---
 
 def get_firestore_client():
     """Initializes and returns the Firestore client."""
@@ -77,8 +71,6 @@ def _get_document_id_from_name(resource_name: str) -> str:
         logger.error(f"Could not parse document ID from resource: {resource_name}")
         return None
 
-# --- Main Cloud Function ---
-
 @functions_framework.cloud_event
 def should_push_data(cloudevent):
     """
@@ -90,22 +82,18 @@ def should_push_data(cloudevent):
 
         client = get_firestore_client()
         
-        # --- 1. Immediate Rate Limiting Check ---
+        # Rate Limiting Check ---
         
-        # Get the threshold from configuration
         threshold_minutes = get_push_threshold_minutes()
-        
-        # Fetch the single 'latest' push timestamp document
+
         push_ref = client.collection('push').document('latest')
         latest_push_doc = push_ref.get()
 
-        # Calculate the time boundary
         threshold_ago = datetime.now(timezone.utc) - timedelta(minutes=threshold_minutes)
 
         if latest_push_doc.exists:
             last_timestamp = latest_push_doc.to_dict().get('lasttimestamp')
 
-            # Check if the last push was too recent
             if isinstance(last_timestamp, datetime) and last_timestamp > threshold_ago:
                 logger.warning(
                     f"Skipping push. Last push at {last_timestamp} is within the "
@@ -115,19 +103,18 @@ def should_push_data(cloudevent):
         
         logger.info("Rate limit check passed. Proceeding with event processing.")
         
-        # --- 2. Event Processing ---
+        #  Event Processing
 
         # Deserialize the event data only after the rate limit check passes
         firestore_event = DocumentEventData.deserialize(cloudevent.data) 
         value: Document = firestore_event.value 
         old_value: Document = firestore_event.old_value
         
-        # Check if this is a document creation event
         if not value or old_value: 
             logger.info("Event was not a document creation or value is missing. Skipping.")
             return "OK", 200
 
-        # 3. Get the collection and document ID
+        # Get the collection and document ID
         resource_name = value.name
         order_id = _get_document_id_from_name(resource_name)
         
@@ -138,7 +125,7 @@ def should_push_data(cloudevent):
         
         logger.info(f"SUCCESS: Triggered by new order document. ID: {order_id}")
         
-        # 4. Extract and decode the new order data
+        # Extract and decode the new order data
         fields = value.fields if value and value.fields else {}
         new_order_data = _decode_firestore_fields(fields)
 
@@ -147,7 +134,7 @@ def should_push_data(cloudevent):
         # --- Add your push notification logic here ---
         logger.info("--> PUSHER SEND NOTIFICATION HERE <---")
         
-        # 5. Record the timestamp of this successful push event
+        # Record the timestamp of this successful push event
         push_ref.set({'lasttimestamp': firestore.SERVER_TIMESTAMP})
         
         logger.info("******** End Processing: should_push_data *************")

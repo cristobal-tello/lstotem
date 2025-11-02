@@ -1,0 +1,20 @@
+# functions/store_data/Dockerfile
+
+FROM python:3.12-slim
+
+# Set the working directory inside the container
+WORKDIR /app
+
+# Copy the requirements file AND install dependencies
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy the application code
+COPY . .
+
+EXPOSE 8080
+
+ENTRYPOINT ["functions-framework", \
+            "--target", "store_data", \
+            "--port", "8080", \
+            "--debug"]

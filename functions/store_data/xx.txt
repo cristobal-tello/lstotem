@@ -1,3 +1,5 @@
+I'm using Firestore emulator in Docker plus other services, here is my docker-compose:
+
 # We intentionally do NOT mount any data-persistence volume for Firestore.
 # The gcloud Firestore emulator (Native mode) is in-memory only and clears data
 # on shutdown, so persisting /data would be misleading.
@@ -75,30 +77,45 @@ services:
 
   # Firestore emulator (ephemeral; no persistence)
   firestore-emulator:
-    build:
-      context: . # Build from the root where Dockerfile.firebase-emulator and firebase.json are
-      dockerfile: Dockerfile.firebase-emulator
-    container_name: lstotem_firebase_emulator_suite
+    image: gcr.io/google.com/cloudsdktool/cloud-sdk:448.0.0-emulators
+    container_name: lstotem_firestore-emulator
+    command: >
+      gcloud emulators firestore start
+      --host-port=0.0.0.0:8080
+      --project=lstotem
     ports:
-      - "4000:4000" # Firebase Emulator UI
-      - "5001:5001" # Functions Emulator
-      - "8082:8080" # Firestore Emulator (mapping 8080 internal to 8082 external)
-      - "8085:8085" # Pub/Sub Emulator (if you use it)
-      - "9099:9099" # Auth Emulator (if you use it)
-    environment:
-      GOOGLE_CLOUD_PROJECT: ${GOOGLE_CLOUD_PROJECT}
+      - "8082:8080" # host can reach emulator at http://localhost:8082
+    # Add a healthcheck to ensure the function waits for the emulator to be ready
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080"]
+      interval: 30s           # Check less frequently
+      timeout: 10s            # Allow more time for response
+      retries: 5
+      start_period: 20s       # Give the 
     networks:
       - lstotem-net
-    env_file:
-      - .env
-    healthcheck:
-      # Check if the UI is up, indicating the suite is largely ready
-      test: ["CMD", "curl", "-f", "http://localhost:4000"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 20s
 
 networks:
   lstotem-net:
     driver: bridge
+
+In production, every write to Firestore launch an event, take a look my cloudbuild.yaml:
+- name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
+    id: DeployShouldPushData
+    entrypoint: gcloud
+    args:
+    - functions
+    - deploy
+    - should_push_data
+    - --gen2
+    - --region=${_REGION}
+    - --runtime=python312
+    - --source=functions/should_push_data
+    - --entry-point=should_push_data
+    - --trigger-event-filters=type=google.cloud.firestore.document.v1.written
+    - --trigger-event-filters=database=(default)
+    - --trigger-event-filters-path-pattern=document=orders/{order_id} 
+    - --memory=256Mi
+    - --timeout=180s
+
+How can I emulate this event trigger locally when I write to Firestore emulator?

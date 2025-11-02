@@ -116,7 +116,7 @@ def store_data(cloud_event):
 
         # Save the validated order to Firestore
         client = get_firestore_client()
-        doc_ref = client.collection('orders').document('LASTTIMESTAMP')
+        doc_ref = client.collection('orders').document()
         doc_ref.set(asdict(order))
 
         # Log the full order content that was saved (safe-serialize any non-JSON types)
