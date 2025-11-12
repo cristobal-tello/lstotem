@@ -23,6 +23,16 @@ clean:
 	@echo "Stopping and removing all services and the firestore-data volume..."
 	docker compose down -v
 
+create_topic:
+	@echo "Creating Pub/Sub topic: prestashop-order-data..."
+	@curl -sS -X PUT http://localhost:8085/v1/projects/lstotem/topics/prestashop-order-data
+
+create_subscription:
+	echo "Creating Subscription: prestashop-order-data-sub, linking to store-data function..."
+	@curl -sS -X PUT http://localhost:8085/v1/projects/lstotem/subscriptions/prestashop-order-data-sub \
+  		-H "Content-Type: application/json" \
+  		-d '{"topic": "projects/lstotem/topics/prestashop-order-data", "pushConfig": {"pushEndpoint": "http://lstotem_store-data:8080"}}'
+
 publish_to_topic:
 # Why your-project-id in "//pubsub.googleapis.com/projects/your-project-id/topics/prestashop-order-data"" is Ignored Locally
 # The emulator relies on the environment variable GOOGLE_CLOUD_PROJECT for its project context.
@@ -31,17 +41,15 @@ publish_to_topic:
 	now=$$(date -u +"%Y-%m-%dT%H:%M:%SZ"); \
 	payload=$$(printf '{"orderId":"MAKE-TEST-%s","dateOrder":"%s","totalOrder":"125.75","paymentType":"credit_card","deliveryType":"standard"}' "$$epoch" "$$now"); \
 	b64=$$(printf '%s' "$$payload" | base64 | tr -d '\n'); \
-	curl -sS -X POST http://localhost:8080 \
-	  -H "Content-Type: application/json" \
-	  -H "ce-id: $$(uuidgen)" \
-	  -H "ce-specversion: 1.0" \
-	  -H "ce-time: $$(date -u +"%Y-%m-%dT%H:%M:%S.000Z")" \
-	  -H "ce-type: google.cloud.pubsub.topic.v1.messagePublished" \
-	  -H "ce-source: //pubsub.googleapis.com/projects/your-project-id/topics/prestashop-order-data" \
-	  -d "$$(printf '{"message":{"data":"%s"}}' "$$b64")"
+	curl -sS -X POST http://localhost:8085/v1/projects/lstotem/topics/prestashop-order-data:publish \
+  	-H "Content-Type: application/json" \
+  	-d "$$(printf '{"messages": [{"data": "%s"}]}' "$$b64")"
 
 store_data_log:
 	docker logs lstotem_store-data
+
+should_push_data_log:
+	docker logs lstotem_should-push-data
 
 firestore_log:
 	docker logs lstotem_firestore-emulator
