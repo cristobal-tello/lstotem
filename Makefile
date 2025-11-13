@@ -41,10 +41,10 @@ publish_to_topic:
 	  -d "$$(printf '{"message":{"data":"%s"}}' "$$b64")"
 
 store_data_log:
-	docker logs lstotem_store-data
+	docker logs $(GOOGLE_CLOUD_PROJECT)-store-data
 
 firestore_log:
-	docker logs lstotem_firestore-emulator
+	docker logs $(GOOGLE_CLOUD_PROJECT)-firestore-emulator
 
 firestore_list_orders:
 	@echo "Querying $(COLLECTION) on $(PROJECT_NAME)..."
@@ -52,14 +52,12 @@ firestore_list_orders:
 	  -H "Content-Type: application/json" \
 	  -d '{"structuredQuery":{"from":[{"collectionId":"orders"}]}}'
 
-milestone_log:
-	docker compose logs -f notifier-order-milestone
 
 web_bash:
-	docker exec -it lstotem_web bash # Open an interactive bash shell in the running container
+	docker exec -it $(GOOGLE_CLOUD_PROJECT)-web bash # Open an interactive bash shell in the running container
 
 web_log:
-	docker logs lstotem_web
+	docker logs $(GOOGLE_CLOUD_PROJECT)-web
 
 web_push:
 	@echo "--- Triggering Pusher Event on [$(PUSHER_CHANNEL)] with Data: $(PUSHER_MSG) ---"
