@@ -15,6 +15,15 @@ down:
 	@echo "Stopping and removing all services..."
 	docker compose down
 
+delete-containers:
+	@echo "Stopping and removing $(GOOGLE_CLOUD_PROJECT) containers..."
+	docker rm -f $$(docker ps -aq --filter "name=^$(GOOGLE_CLOUD_PROJECT)")
+
+delete-images:
+	@echo "Removing all images that start with $(GOOGLE_CLOUD_PROJECT)..."
+	docker rmi -f $$(docker images -q $(GOOGLE_CLOUD_PROJECT)*)
+	docker image prune -f
+
 logs:
 	@echo "Showing logs for all services..."
 	docker compose logs -f

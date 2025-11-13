@@ -39,8 +39,35 @@ services:
     environment:
       FIRESTORE_EMULATOR_HOST: "firestore-emulator:8080"
       GOOGLE_CLOUD_PROJECT: ${GOOGLE_CLOUD_PROJECT}
-      FUNCTION_TARGET: store_data
+      FUNCTION_TARGET_NAME: store_data
       PYTHONUNBUFFERED: "1"
+    networks:
+      - project-network
+    env_file:
+      - .env
+    
+  check-push-data:
+    build:
+      context: ./functions/check_push_data
+      dockerfile: Dockerfile.dev
+    container_name: ${GOOGLE_CLOUD_PROJECT}-check-push-data
+    depends_on:
+      firestore-emulator:
+        condition: service_healthy
+    volumes:
+      - ./functions/check_push_data:/app
+    ports:
+      - "8083:8080"
+    restart: always
+    environment:
+      FIRESTORE_EMULATOR_HOST: "firestore-emulator:8080"
+      GOOGLE_CLOUD_PROJECT: ${GOOGLE_CLOUD_PROJECT}
+      FUNCTION_TARGET_NAME: check_push_data
+      PYTHONUNBUFFERED: "1"
+      PUSHER_APP_ID: ${PUSHER_APP_ID}
+      PUSHER_APP_KEY: ${PUSHER_APP_KEY}
+      PUSHER_APP_SECRET: ${PUSHER_APP_SECRET}
+      PUSHER_CLUSTER: ${PUSHER_CLUSTER}
     networks:
       - project-network
     env_file:
