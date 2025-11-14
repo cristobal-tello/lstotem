@@ -8,7 +8,7 @@ use Symfony\Component\Routing\Attribute\Route;
 
 class TotalDailyOrdersController extends BaseController
 {
-    #[Route('/TotalDailyOrders', name: 'app_total_daily_orders')]
+    #[Route('/total-orders', name: 'app_total_daily_orders')]
     public function index(Request $request): Response
     {
         $total = $request->query->get('total');
