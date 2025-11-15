@@ -65,9 +65,7 @@ def check_push_data(cloudevent):
                 logger.info(f"Type of fields: {type(fields2)}")
                 logger.info(f"Data ': {fields2}")
                 for key, value_obj in fields2.items():
-                    if isinstance(value_obj, dict) and value_obj:
-                        inner_value = list(value_obj.values())[0]
-                        logger.info(f"******** Key2: {key}, Value: {inner_value} *************")
+                    logger.info(f"******** Key2: {key}, Value: {value_obj} *************")
                     
             else:
                 # Local environment testing
