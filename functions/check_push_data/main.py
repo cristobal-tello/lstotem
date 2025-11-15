@@ -46,7 +46,8 @@ def check_push_data(cloudevent):
 
             if isinstance(raw, (bytes, bytearray)):
                 # Google Cloud
-                firestore_event_data: Dict[str, Any] = cloudevent.data
+                json_string = raw.decode("utf-8", errors="ignore")
+                firestore_event_data: Dict[str, Any] = json.loads(json_string) 
                 fields = firestore_event_data.get('value', {}).get('fields', {})
             elif isinstance(raw, str):
                 logger.info("5")
