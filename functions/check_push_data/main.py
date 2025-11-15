@@ -46,9 +46,11 @@ def check_push_data(cloudevent):
 
             if isinstance(raw, (bytes, bytearray)):
                 # Google Cloud
-                json_string = raw.decode("utf-8", errors="ignore")
-                firestore_event_data: Dict[str, Any] = json.loads(json_string) 
-                fields = firestore_event_data.get('value', {}).get('fields', {})
+                #json_string = raw.decode("utf-8", errors="ignore")
+                #firestore_event_data: Dict[str, Any] = json.loads(json_string) 
+                #fields = firestore_event_data.get('value', {}).get('fields', {})
+                firestore_event = DocumentEventData.deserialize(raw)
+                fields = firestore_event.value.fields
             elif isinstance(raw, str):
                 logger.info("5")
                 fields = raw
@@ -59,13 +61,13 @@ def check_push_data(cloudevent):
             
             logger.info(f"Fields: {fields}")
             
-            result = {}
+            # result = {}
 
-            for key, value_obj in fields.items():
-                # Extract the inner Firestore value (stringValue, doubleValue, integerValue, etc.)
-                inner_key = list(value_obj.keys())[0]
-                result[key] = value_obj[inner_key]
-                logger.info(f"******** Key: {key}, Value: {value_obj[inner_key]} *************")
+            # for key, value_obj in fields.items():
+            #     # Extract the inner Firestore value (stringValue, doubleValue, integerValue, etc.)
+            #     inner_key = list(value_obj.keys())[0]
+            #     result[key] = value_obj[inner_key]
+            #     logger.info(f"******** Key: {key}, Value: {value_obj[inner_key]} *************")
 
        
        
