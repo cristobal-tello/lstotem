@@ -1,3 +1,4 @@
+import inspect
 import base64
 import json
 import logging
@@ -104,7 +105,8 @@ def store_data(cloud_event):
     It parses order data and saves it to Firestore.
     """
     try:
-        logger.info("******** Start Processing *************")
+        func_name = inspect.currentframe().f_code.co_name
+        logger.info(f"******** Start Processing: {func_name} *************")
         logger.info("Processing CloudEvent ID: %s", cloud_event['id'])
 
         # Decode Pub/Sub message robustly
@@ -122,7 +124,7 @@ def store_data(cloud_event):
         # Log the full order content that was saved (safe-serialize any non-JSON types)
         logger.info("Order successfully saved. Order data: %s", json.dumps(asdict(order), default=str))
 
-        logger.info("******** End Processing *************")
+        logger.info(f"******** End Processing: {func_name} *************")
 
     except (json.JSONDecodeError, KeyError, TypeError) as e:
         logger.error(f"Failed to decode or parse Pub/Sub message: {e}")
