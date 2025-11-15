@@ -13,22 +13,25 @@ from typing import Dict, Any
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-def deserialize_firestore_fields(fields: Dict[str, Dict[str, Any]]) -> Dict[str, Any]:
+FIREBASE_FIELD_TYPES = [
+    'null_value', 'boolean_value', 'integer_value', 'double_value', 'timestamp_value',
+    'string_value', 'bytes_value', 'reference_value', 'geo_point_value', 
+    'array_value', 'map_value'
+]
+
+def _decode_firestore_fields(fields: Dict[str, Any]) -> Dict[str, Any]:
     """
-    Converts Firestore's structured field format (e.g., {"fieldName": {"stringValue": "value"}}) 
-    into a flat Python dictionary.
+    Decodes Firestore structured fields from the DocumentEventData 
+    into native Python types.
     """
     decoded_data = {}
     for key, firestore_type_value in fields.items():
-        # The actual value is the first (and only) value in the inner dictionary.
-        # This handles 'stringValue', 'doubleValue', 'integerValue', etc.
         if isinstance(firestore_type_value, dict) and firestore_type_value:
-            # Get the value of the first item (e.g., the order ID, date, or total)
             decoded_data[key] = list(firestore_type_value.values())[0]
         else:
             decoded_data[key] = firestore_type_value
-            
     return decoded_data
+
 
 @functions_framework.cloud_event
 def check_push_data(cloudevent):
@@ -50,13 +53,17 @@ def check_push_data(cloudevent):
                 #firestore_event_data: Dict[str, Any] = json.loads(json_string) 
                 #fields = firestore_event_data.get('value', {}).get('fields', {})
                 firestore_event = DocumentEventData.deserialize(raw)
-                fields = firestore_event.value.fields
+                value: Document = firestore_event.value 
+                resource_name = value.name
+
+                fields = value.fields if value and value.fields else {}
+                fields2 = _decode_firestore_fields(fields)
+                
                 logger.info("Firestore fields obtained from CloudEvent data.")
+                logger.info(f"Resource name: {resource_name}")
                 logger.info(f"Type of fields: {type(fields)}")
-                fields_dict = dict(fields)
-                for key, value in dict(fields_dict).items():
-                    value_type = next(iter(value)) 
-                    logger.info(f"******** Key: {key}, Value: {value[value_type]} *************")
+                logger.info(f"Type of fields: {type(fields2)}")
+                logger.info(f"Data ': {fields2}")
             else:
                 # Local environment testing
                 data = json.loads(json.dumps(raw))
