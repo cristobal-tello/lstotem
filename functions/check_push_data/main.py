@@ -13,6 +13,23 @@ from typing import Dict, Any
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+def deserialize_firestore_fields(fields: Dict[str, Dict[str, Any]]) -> Dict[str, Any]:
+    """
+    Converts Firestore's structured field format (e.g., {"fieldName": {"stringValue": "value"}}) 
+    into a flat Python dictionary.
+    """
+    decoded_data = {}
+    for key, firestore_type_value in fields.items():
+        # The actual value is the first (and only) value in the inner dictionary.
+        # This handles 'stringValue', 'doubleValue', 'integerValue', etc.
+        if isinstance(firestore_type_value, dict) and firestore_type_value:
+            # Get the value of the first item (e.g., the order ID, date, or total)
+            decoded_data[key] = list(firestore_type_value.values())[0]
+        else:
+            decoded_data[key] = firestore_type_value
+            
+    return decoded_data
+
 @functions_framework.cloud_event
 def check_push_data(cloudevent):
     """
@@ -38,15 +55,35 @@ def check_push_data(cloudevent):
         if isinstance(raw, (bytes, bytearray)):
             logger.info("4")
             firestore_event = DocumentEventData.deserialize(cloudevent.data) 
-            text: Document = firestore_event.value 
+            payload: Document = firestore_event.value 
         elif isinstance(raw, str):
             logger.info("5")
-            text = raw
+            payload = raw
         else:
             logger.info("6")
-            text = json.dumps(raw)
+            payload = json.dumps(raw)
         
-        logger.info(f"{text}")
+        logger.info(f"{payload}")
+        data = json.loads(payload)
+
+        name = data["value"]["name"]
+        logger.info(f"******** Key: name, Value: {name} *************")
+        fields = data["value"]["fields"]
+
+        result = {}
+
+        for key, value_obj in fields.items():
+            # Extract the inner Firestore value (stringValue, doubleValue, integerValue, etc.)
+            inner_key = list(value_obj.keys())[0]
+            result[key] = value_obj[inner_key]
+            logger.info(f"******** Key: {key}, Value: {value_obj[inner_key]} *************")
+
+       
+       
+       #data = deserialize_firestore_fields(payload)
+       # logger.info(f"Deserialized Data: {data}")
+
+         
 
         logger.info(f"******** End Processing: {func_name} *************")
         return "OK", 200
