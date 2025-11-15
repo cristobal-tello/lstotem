@@ -42,41 +42,30 @@ def check_push_data(cloudevent):
 
         # Get the raw event data (could be attribute or dict)
         if hasattr(cloudevent, "data"):
-            logger.info("1")
             raw = cloudevent.data
+
+            if isinstance(raw, (bytes, bytearray)):
+                # Google Cloud
+                firestore_event = DocumentEventData.deserialize(cloudevent.data) 
+                document_state_dict = firestore_event.value.asdict()
+                fields = document_state_dict.get('fields', {})
+            elif isinstance(raw, str):
+                logger.info("5")
+                fields = raw
+            else:
+                # Local environment testing
+                data = json.loads(json.dumps(raw))
+                fields = data["value"]["fields"]
             
-        elif isinstance(cloudevent, dict):
-            logger.info("2")
-            raw = cloudevent.get("data") or cloudevent
-        else:
-            logger.info("3")
-            raw = cloudevent
+            logger.info(f"Fields: {fields}")
+            
+            result = {}
 
-        if isinstance(raw, (bytes, bytearray)):
-            logger.info("4")
-            firestore_event = DocumentEventData.deserialize(cloudevent.data) 
-            payload: Document = firestore_event.value.to_dict()
-        elif isinstance(raw, str):
-            logger.info("5")
-            payload = raw
-        else:
-            logger.info("6")
-            payload = json.dumps(raw)
-        
-        logger.info(f"{payload}")
-        data = json.loads(payload)
-
-        name = data["value"]["name"]
-        logger.info(f"******** Key: name, Value: {name} *************")
-        fields = data["value"]["fields"]
-
-        result = {}
-
-        for key, value_obj in fields.items():
-            # Extract the inner Firestore value (stringValue, doubleValue, integerValue, etc.)
-            inner_key = list(value_obj.keys())[0]
-            result[key] = value_obj[inner_key]
-            logger.info(f"******** Key: {key}, Value: {value_obj[inner_key]} *************")
+            for key, value_obj in fields.items():
+                # Extract the inner Firestore value (stringValue, doubleValue, integerValue, etc.)
+                inner_key = list(value_obj.keys())[0]
+                result[key] = value_obj[inner_key]
+                logger.info(f"******** Key: {key}, Value: {value_obj[inner_key]} *************")
 
        
        
