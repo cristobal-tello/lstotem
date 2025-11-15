@@ -37,7 +37,8 @@ def check_push_data(cloudevent):
 
         if isinstance(raw, (bytes, bytearray)):
             logger.info("4")
-            text = raw.decode("utf-8", errors="ignore")
+            firestore_event = DocumentEventData.deserialize(cloudevent.data) 
+            text: Document = firestore_event.value 
         elif isinstance(raw, str):
             logger.info("5")
             text = raw
