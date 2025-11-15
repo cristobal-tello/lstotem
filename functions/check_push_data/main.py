@@ -64,6 +64,9 @@ def check_push_data(cloudevent):
                 logger.info(f"Type of fields: {type(fields)}")
                 logger.info(f"Type of fields: {type(fields2)}")
                 logger.info(f"Data ': {fields2}")
+                for key, value_obj in fields2.items():
+                    inner_key = list(value_obj.keys())[0]
+                    logger.info(f"******** Key2: {key}, Value: {value_obj[inner_key]} *************")
             else:
                 # Local environment testing
                 data = json.loads(json.dumps(raw))
