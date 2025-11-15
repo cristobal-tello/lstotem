@@ -14,7 +14,4 @@ COPY . .
 
 EXPOSE 8080
 
-ENTRYPOINT ["functions-framework", \
-            "--target", "store_data", \
-            "--port", "8080", \
-            "--debug"]
+ENTRYPOINT ["sh", "-c", "functions-framework --target \"$FUNCTION_TARGET_NAME\" --port 8080 --debug"]

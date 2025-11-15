@@ -15,6 +15,15 @@ down:
 	@echo "Stopping and removing all services..."
 	docker compose down
 
+delete-containers:
+	@echo "Stopping and removing $(GOOGLE_CLOUD_PROJECT) containers..."
+	docker rm -f $$(docker ps -aq --filter "name=^$(GOOGLE_CLOUD_PROJECT)")
+
+delete-images:
+	@echo "Removing all images that start with $(GOOGLE_CLOUD_PROJECT)..."
+	docker rmi -f $$(docker images -q $(GOOGLE_CLOUD_PROJECT)*)
+	docker image prune -f
+
 logs:
 	@echo "Showing logs for all services..."
 	docker compose logs -f
@@ -41,25 +50,23 @@ publish_to_topic:
 	  -d "$$(printf '{"message":{"data":"%s"}}' "$$b64")"
 
 store_data_log:
-	docker logs lstotem_store-data
+	docker logs $(GOOGLE_CLOUD_PROJECT)-store-data
 
 firestore_log:
-	docker logs lstotem_firestore-emulator
+	docker logs $(GOOGLE_CLOUD_PROJECT)-firestore-emulator
 
 firestore_list_orders:
 	@echo "Querying $(COLLECTION) on $(PROJECT_NAME)..."
-	@curl -s -X POST "http://localhost:8082/v1/projects/lstotem/databases/(default)/documents:runQuery" \
+	@curl -s -X POST "http://localhost:8082/v1/projects/$(GOOGLE_CLOUD_PROJECT)/databases/(default)/documents:runQuery" \
 	  -H "Content-Type: application/json" \
 	  -d '{"structuredQuery":{"from":[{"collectionId":"orders"}]}}'
 
-milestone_log:
-	docker compose logs -f notifier-order-milestone
 
 web_bash:
-	docker exec -it lstotem_web bash # Open an interactive bash shell in the running container
+	docker exec -it $(GOOGLE_CLOUD_PROJECT)-web bash # Open an interactive bash shell in the running container
 
 web_log:
-	docker logs lstotem_web
+	docker logs $(GOOGLE_CLOUD_PROJECT)-web
 
 web_push:
 	@echo "--- Triggering Pusher Event on [$(PUSHER_CHANNEL)] with Data: $(PUSHER_MSG) ---"
@@ -72,3 +79,33 @@ web_push:
 		-H "Content-Type: application/json" \
 		-d "$$JSON_PAYLOAD" \
 	&& echo "✅ Event sent successfully!" || echo "❌ Failed to send event"
+
+
+
+check_push_data:
+	@echo "Directly triggering check_push_data with minimal document structure..."
+	@UUID=$$(uuidgen); \
+	NOW=$$(date -u +"%Y-%m-%dT%H:%M:%S.000Z"); \
+	RESOURCE_NAME="projects/$(GOOGLE_CLOUD_PROJECT)/databases/(default)/documents/orders/TEST-$$UUID"; \
+	TEMP_PAYLOAD_FILE=/tmp/firestore_payload_$$UUID.txt; \
+	\
+	# Create the raw Firestore event payload with MINIMAL document fields: name and fields \
+	# We remove createTime and updateTime to simplify the JSON structure for the parser. \
+	printf '{"value":{"name":"%s","fields":%s},"oldValue":null,"updateMask":{}}' "$$RESOURCE_NAME" '{"orderId":{"stringValue":"TEST-'$$UUID'"},"dateOrder":{"stringValue":"'$$NOW'"},"totalOrder":{"doubleValue":125.75}}' > $$TEMP_PAYLOAD_FILE; \
+	\
+	# Curl sends the file content as the body. \
+	curl -sS -X POST http://localhost:8083 \
+		-H "Content-Type: text/plain" \
+		-H "ce-id: $$UUID" \
+		-H "ce-specversion: 1.0" \
+		-H "ce-time: $$NOW" \
+		-H "ce-type: google.cloud.firestore.document.v1.created" \
+		-H "ce-source: //firestore.googleapis.com/projects/$(GOOGLE_CLOUD_PROJECT)/databases/(default)" \
+		--data-binary "@$$TEMP_PAYLOAD_FILE" \
+	; \
+	\
+	# Clean up and report status \
+	rm $$TEMP_PAYLOAD_FILE; \
+	echo "\n✅ Event sent to check-push-data (TEST-$$UUID)" || echo "\n❌ Failed to send event"
+check_push_data_log:
+	docker logs $(GOOGLE_CLOUD_PROJECT)-check-push-data

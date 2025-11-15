@@ -72,12 +72,12 @@ def _get_document_id_from_name(resource_name: str) -> str:
         return None
 
 @functions_framework.cloud_event
-def should_push_data(cloudevent):
+def check_push_data(cloudevent):
     """
     Triggered by a Firestore event. Performs rate-limit check immediately.
     """
     try:
-        logger.info("******** Start Processing: should_push_data *************")
+        logger.info("******** Start Processing: check_push_data *************")
         logger.info("Processing CloudEvent ID: %s", cloudevent.get('id'))
 
         client = get_firestore_client()
@@ -137,9 +137,9 @@ def should_push_data(cloudevent):
         # Record the timestamp of this successful push event
         push_ref.set({'lasttimestamp': firestore.SERVER_TIMESTAMP})
         
-        logger.info("******** End Processing: should_push_data *************")
+        logger.info("******** End Processing: check_push_data *************")
         return "OK", 200
     
     except Exception as e:
-        logger.exception("Unexpected error in should_push_data: %s", e)
+        logger.exception("Unexpected error in check_push_data: %s", e)
         return "Internal Server Error", 500
