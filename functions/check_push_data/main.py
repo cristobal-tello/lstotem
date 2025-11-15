@@ -51,30 +51,21 @@ def check_push_data(cloudevent):
                 #fields = firestore_event_data.get('value', {}).get('fields', {})
                 firestore_event = DocumentEventData.deserialize(raw)
                 fields = firestore_event.value.fields
-            elif isinstance(raw, str):
-                logger.info("5")
-                fields = raw
+
+                for key, value_obj in fields.items():
+                    value_dict = value_obj._pb.to_dict() 
+                    if value_dict:
+                        # Get the value of the first key (e.g., 'TEST-38c5...')
+                        inner_value = list(value_dict.values())[0]
+                        logger.info(f"******** Key: {key}, Value: {inner_value} *************")
             else:
                 # Local environment testing
                 data = json.loads(json.dumps(raw))
                 fields = data["value"]["fields"]
-            
-            logger.info(f"Fields: {fields}")
-            
-            # result = {}
-
-            # for key, value_obj in fields.items():
-            #     # Extract the inner Firestore value (stringValue, doubleValue, integerValue, etc.)
-            #     inner_key = list(value_obj.keys())[0]
-            #     result[key] = value_obj[inner_key]
-            #     logger.info(f"******** Key: {key}, Value: {value_obj[inner_key]} *************")
-
-       
-       
-       #data = deserialize_firestore_fields(payload)
-       # logger.info(f"Deserialized Data: {data}")
-
-         
+                for key, value_obj in fields.items():
+                    # Extract the inner Firestore value (stringValue, doubleValue, integerValue, etc.)
+                    inner_key = list(value_obj.keys())[0]
+                    logger.info(f"******** Key: {key}, Value: {value_obj[inner_key]} *************")
 
         logger.info(f"******** End Processing: {func_name} *************")
         return "OK", 200
