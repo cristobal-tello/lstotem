@@ -51,17 +51,19 @@ def check_push_data(cloudevent):
                 #fields = firestore_event_data.get('value', {}).get('fields', {})
                 firestore_event = DocumentEventData.deserialize(raw)
                 fields = firestore_event.value.fields
-
-                for key, value_obj in fields.items():
-                    value_dict = value_obj._pb.to_dict() 
-                    if value_dict:
-                        # Get the value of the first key (e.g., 'TEST-38c5...')
-                        inner_value = list(value_dict.values())[0]
-                        logger.info(f"******** Key: {key}, Value: {inner_value} *************")
+                logger.info("Firestore fields obtained from CloudEvent data.")
+                logger.info(f"Type of fields: {type(fields)}")
+                fields_dict = dict(fields)
+                for key, value in dict(fields_dict).items():
+                    value_type = next(iter(value)) 
+                    logger.info(f"******** Key: {key}, Value: {value[value_type]} *************")
             else:
                 # Local environment testing
                 data = json.loads(json.dumps(raw))
                 fields = data["value"]["fields"]
+                logger.info("JSON")
+                logger.info(f"Type of fields: {type(fields)}")
+
                 for key, value_obj in fields.items():
                     # Extract the inner Firestore value (stringValue, doubleValue, integerValue, etc.)
                     inner_key = list(value_obj.keys())[0]
