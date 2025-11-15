@@ -7,10 +7,6 @@ up:
 	@echo "Building and starting services..."
 	docker compose up --build -d
 
-build:
-	@echo "Building the 'store-data' service image..."
-	docker compose build store-data
-
 down:
 	@echo "Stopping and removing all services..."
 	docker compose down
@@ -80,8 +76,6 @@ web_push:
 		-d "$$JSON_PAYLOAD" \
 	&& echo "✅ Event sent successfully!" || echo "❌ Failed to send event"
 
-
-
 check_push_data:
 	@echo "Directly triggering check_push_data with minimal document structure..."
 	@UUID=$$(uuidgen); \
@@ -107,5 +101,6 @@ check_push_data:
 	# Clean up and report status \
 	rm $$TEMP_PAYLOAD_FILE; \
 	echo "\n✅ Event sent to check-push-data (TEST-$$UUID)" || echo "\n❌ Failed to send event"
+
 check_push_data_log:
 	docker logs $(GOOGLE_CLOUD_PROJECT)-check-push-data
