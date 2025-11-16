@@ -47,6 +47,7 @@ def extract_value_from_proto(value_obj: Any) -> Any:
             logger.info(f"PASA 1")    
             # Use getattr() to safely retrieve the value
             inner_value = getattr(value_obj, type_key)
+            logger.info(f"Type Key: {type_key}, Inner Value: {inner_value}")    
             
             # Check for meaningful value
             if type_key == 'null_value' or (inner_value is not None and inner_value != ''):
@@ -85,6 +86,7 @@ def check_push_data(cloudevent):
                 for key, value_obj in fields.items():
                     logger.info(f"Type of value_obj: {type(value_obj)}")
                     if isinstance(value_obj, Value):
+                        
                         logger.info(f"******** Key2: {key}, Value: {value_obj} *************")
                         content = extract_value_from_proto(value_obj)
                         logger.info(f"Extracted Value: {content}")
