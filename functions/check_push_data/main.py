@@ -54,7 +54,13 @@ def check_push_data(cloudevent):
                 logger.info(f"Data ': {fields}")
                 for key, value_obj in fields.items():
                     logger.info(f"Type of value_obj: {type(value_obj)}")
-                    logger.info(f"******** Key2: {key}, Value: {value_obj} *************")
+                    if isinstance(value_obj, google.events.cloud.firestore_v1.types.data.Value):
+                        inner_key = list(value_obj.keys())[0]
+                        logger.info(f"******** Key2: {key}, Value: {value_obj} *************")
+                        logger.info("Which oneof: %s", value_obj.WhichOneof("value"))
+                        kind = value_obj.WhichOneof("value")
+                        value = getattr(value_obj, kind)
+                        logger.info(f"Extracted Value: {value}")
                     
             else:
                 # Local environment testing
@@ -64,9 +70,10 @@ def check_push_data(cloudevent):
                 logger.info(f"Type of fields: {type(fields)}")
 
                 for key, value_obj in fields.items():
-                    logger.info(f"Type of value_obj: {type(value_obj)}")
-                    inner_key = list(value_obj.keys())[0]
-                    logger.info(f"******** Key3: {key}, Value: {value_obj[inner_key]} *************")
+                    if isinstance(value_obj, dict):
+                        logger.info(f"Type of value_obj: {type(value_obj)}")
+                        inner_key = list(value_obj.keys())[0]
+                        logger.info(f"******** Key3: {key}, Value: {value_obj[inner_key]} *************")
 
         # logger.info("Final Resource name: %s", resource_name)
         # for key, value_obj in fields.items():
