@@ -73,6 +73,36 @@ def extract_value_from_proto(value_obj: Any) -> Any:
     logger.warning("No valid value found in Value object.")
     return None
 
+def unwrap_value(value_obj):
+    # Check each known Firestore typed field
+    if value_obj.string_value is not None:
+        logger.info(f"Falling back to string_value: {value_obj.string_value}")
+        return value_obj.string_value
+    if value_obj.integer_value is not None:
+        logger.info(f"Falling back to integer_value: {value_obj.integer_value}")
+        return value_obj.integer_value
+    if value_obj.double_value is not None:
+        logger.info(f"Falling back to double_value: {value_obj.double_value}")
+        return value_obj.double_value
+    if value_obj.boolean_value is not None:
+        logger.info(f"Falling back to boolean_value: {value_obj.boolean_value}")
+        return value_obj.boolean_value
+    if value_obj.timestamp_value is not None:
+        logger.info(f"Falling back to timestamp_value: {value_obj.timestamp_value}")
+        return value_obj.timestamp_value
+    if value_obj.null_value is not None:
+        logger.info(f"Falling back to null_value: {value_obj.null_value}")
+        return None
+    if value_obj.map_value is not None:
+        logger.info(f"Falling back to map_value: {value_obj.map_value}")
+        return None
+    if value_obj.array_value is not None:
+        logger.info(f"Falling back to array_value: {value_obj.array_value}")
+        return [unwrap_value(v) for v in value_obj.array_value.values]
+
+    return None  # fallback
+
+
 @functions_framework.cloud_event
 def check_push_data(cloudevent):
     """
@@ -101,10 +131,11 @@ def check_push_data(cloudevent):
                 logger.info(f"Data ': {fields}")
                 for key, value_obj in fields.items():
                     logger.info(f"Type of value_obj: {type(value_obj)}")
+                    logger.info(f"Dir of value_obj: {dir(value_obj)}")
                     if isinstance(value_obj, Value):
-                        
-                        logger.info(f"******** Key2: {key}, Value: {value_obj} *************")
+                        logger.info(f"******** Key2: {key}, Value: {value_obj}");
                         content = extract_value_from_proto(value_obj)
+                        unwrap_value(value_obj)
                         logger.info(f"Extracted Value: {content}")
                     
             else:
