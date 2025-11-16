@@ -44,14 +44,16 @@ def extract_value_from_proto(value_obj: Any) -> Any:
         
         # Use hasattr() to check if the attribute exists
         if hasattr(value_obj, type_key):
-            
+            logger.info(f"PASA 1")    
             # Use getattr() to safely retrieve the value
             inner_value = getattr(value_obj, type_key)
             
             # Check for meaningful value
             if type_key == 'null_value' or (inner_value is not None and inner_value != ''):
+                logger.info(f"PASA 2")    
                 return inner_value
-                
+            
+    logger.info(f"PASA 3")    
     return None
 
 @functions_framework.cloud_event
