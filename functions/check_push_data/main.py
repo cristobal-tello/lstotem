@@ -27,6 +27,25 @@ def _decode_firestore_fields(fields: Dict[str, Any]) -> Dict[str, Any]:
             decoded_data[key] = firestore_type_value
     return decoded_data
 
+def extract_value_from_proto(value_obj: Any) -> Any:
+    """
+    Safely extracts the primitive value from a proto Value object 
+    by iterating over known proto field attributes using getattr().
+    """
+    for type_key in FIREBASE_FIELD_TYPES:
+        
+        # Use hasattr() to check if the attribute exists
+        if hasattr(value_obj, type_key):
+            
+            # Use getattr() to safely retrieve the value
+            inner_value = getattr(value_obj, type_key)
+            
+            # Check for meaningful value
+            if type_key == 'null_value' or (inner_value is not None and inner_value != ''):
+                return inner_value
+                
+    return None
+
 @functions_framework.cloud_event
 def check_push_data(cloudevent):
     """
@@ -57,9 +76,7 @@ def check_push_data(cloudevent):
                     logger.info(f"Type of value_obj: {type(value_obj)}")
                     if isinstance(value_obj, Value):
                         logger.info(f"******** Key2: {key}, Value: {value_obj} *************")
-                        logger.info("Which oneof: %s", value_obj.WhichOneof("value"))
-                        kind = value_obj.WhichOneof("value")
-                        content = getattr(value_obj, kind)
+                        content = extract_value_from_proto(value_obj)
                         logger.info(f"Extracted Value: {content}")
                     
             else:
