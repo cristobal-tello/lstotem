@@ -6,6 +6,7 @@ import base64
 from datetime import datetime, timedelta, timezone
 from google.cloud import firestore
 from google.events.cloud.firestore import DocumentEventData, Document
+from google.events.cloud.firestore_v1.types.data import Value
 import functions_framework
 from typing import Dict, Any
 
@@ -54,13 +55,13 @@ def check_push_data(cloudevent):
                 logger.info(f"Data ': {fields}")
                 for key, value_obj in fields.items():
                     logger.info(f"Type of value_obj: {type(value_obj)}")
-                    if isinstance(value_obj, google.events.cloud.firestore_v1.types.data.Value):
+                    if isinstance(value_obj, Value):
                         inner_key = list(value_obj.keys())[0]
                         logger.info(f"******** Key2: {key}, Value: {value_obj} *************")
                         logger.info("Which oneof: %s", value_obj.WhichOneof("value"))
                         kind = value_obj.WhichOneof("value")
-                        value = getattr(value_obj, kind)
-                        logger.info(f"Extracted Value: {value}")
+                        content = getattr(value_obj, kind)
+                        logger.info(f"Extracted Value: {content}")
                     
             else:
                 # Local environment testing
