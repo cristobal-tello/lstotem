@@ -1,20 +1,15 @@
 import logging
-import os # Import the os module to access environment variables
 import inspect # To dynamically get the function name
 import json
-import base64
-from datetime import datetime, timedelta, timezone
-from google.cloud import firestore
 from google.events.cloud.firestore import DocumentEventData, Document
 from google.events.cloud.firestore_v1.types.data import Value
 import functions_framework
-from typing import Dict, Any
-
-
+from typing import Dict, Any, Optional
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
 
 
 def _decode_firestore_fields(fields: Dict[str, Any]) -> Dict[str, Any]:
@@ -24,13 +19,19 @@ def _decode_firestore_fields(fields: Dict[str, Any]) -> Dict[str, Any]:
     """
     decoded_data = {}
     for key, firestore_type_value in fields.items():
-        if isinstance(firestore_type_value, dict) and firestore_type_value:
-            decoded_data[key] = list(firestore_type_value.values())[0]
+        if isinstance(firestore_type_value, Value):
+            # Handles live environment (Value protobuf objects)
+            decoded_data[key] = unwrap_value(firestore_type_value)
+        elif isinstance(firestore_type_value, dict) and firestore_type_value:
+            # Handles local testing (JSON representation)
+            # Assumes format like: {'stringValue': 'some_value'}
+            value_type = list(firestore_type_value.keys())[0]
+            decoded_data[key] = firestore_type_value[value_type]
         else:
             decoded_data[key] = firestore_type_value
     return decoded_data
 
-def unwrap_value(value_obj):
+def unwrap_value(value_obj: Value) -> Any:
     kind = value_obj._pb.WhichOneof("value_type")
 
     if kind == "string_value":
@@ -51,8 +52,8 @@ def unwrap_value(value_obj):
     if kind == "timestamp_value":
         return value_obj.timestamp_value
 
-    # if kind == "map_value":
-    #     return unwrap_map(value_obj.map_value)
+    if kind == "map_value":
+        return {k: unwrap_value(v) for k, v in value_obj.map_value.fields.items()}
 
     if kind == "array_value":
         return [unwrap_value(v) for v in value_obj.array_value.values]
@@ -61,46 +62,34 @@ def unwrap_value(value_obj):
 
 @functions_framework.cloud_event
 def check_push_data(cloudevent):
-    """
-    Triggered by a Firestore event. Performs rate-limit check immediately.
-    """
+    """Triggered by a Firestore event. Logs the data from the event."""
     try:
         func_name = inspect.currentframe().f_code.co_name
         logger.info(f"******** Start Processing: {func_name} *************")
         logger.info("Processing CloudEvent ID: %s", cloudevent['id'])
 
-        # Get the raw event data (could be attribute or dict)
-        if hasattr(cloudevent, "data"):
-            raw = cloudevent.data
+        resource_name: Optional[str] = None
+        decoded_fields: Dict[str, Any] = {}
 
-            if isinstance(raw, (bytes, bytearray)):
-                # Google Cloud
-                firestore_event = DocumentEventData.deserialize(raw)
-                value: Document = firestore_event.value 
+        raw_data = cloudevent.data
+
+        if isinstance(raw_data, (bytes, bytearray)):
+            # Live Google Cloud environment
+            firestore_event = DocumentEventData.deserialize(raw_data)
+            value: Optional[Document] = firestore_event.value
+            if value:
                 resource_name = value.name
-                firestore_fields = value.fields if value and value.fields else {}
-                fields = _decode_firestore_fields(firestore_fields)
-                for key, value_obj in fields.items():
-                    if isinstance(value_obj, Value):
-                        kind = value_obj._pb.WhichOneof("value_type")
-                        content = unwrap_value(value_obj)
-            else:
-                # Local environment testing
-                data = json.loads(json.dumps(raw))
-                resource_name = data["value"]["name"]
-                fields = data["value"]["fields"]
+                decoded_fields = _decode_firestore_fields(value.fields)
+        elif isinstance(raw_data, dict):
+            # Local testing environment
+            value_data = raw_data.get("value", {})
+            resource_name = value_data.get("name")
+            firestore_fields = value_data.get("fields", {})
+            decoded_fields = _decode_firestore_fields(firestore_fields)
 
-            logger.info("Resource name: %s", resource_name)
-            for key, value_obj in fields.items():
-                if isinstance(value_obj, dict):
-                    inner_key = list(value_obj.keys())[0]
-                    content = value_obj[inner_key]
-                    
-                if isinstance(value_obj, Value):
-                    kind = value_obj._pb.WhichOneof("value_type")
-                    content = unwrap_value(value_obj)
-                
-                logger.info(f"Field: {key}, Content: {content}")
+        logger.info("Resource name: %s", resource_name)
+        for key, content in decoded_fields.items():
+            logger.info(f"Field: {key}, Content: {content}")
         
         logger.info(f"******** End Processing: {func_name} *************")
         return "OK", 200
