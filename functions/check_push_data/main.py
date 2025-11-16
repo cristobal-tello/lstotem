@@ -37,24 +37,40 @@ def _decode_firestore_fields(fields: Dict[str, Any]) -> Dict[str, Any]:
 
 def extract_value_from_proto(value_obj: Any) -> Any:
     """
-    Safely extracts the primitive value from a proto Value object 
-    by iterating over known proto field attributes using getattr().
+    Safely extracts the primitive value from a proto Value object using getattr(),
+    prioritizing non-zero/non-null fields to avoid the default 'null_value: 0' error.
     """
+    
+    # 1. Loop to find the actual set field
     for type_key in FIREBASE_FIELD_TYPES:
         
-        # Use hasattr() to check if the attribute exists
         if hasattr(value_obj, type_key):
-            logger.info(f"PASA 1")    
-            # Use getattr() to safely retrieve the value
+            logger.info(f"Checking type_key: {type_key}")
             inner_value = getattr(value_obj, type_key)
-            logger.info(f"Type Key: {type_key}, Inner Value: {inner_value}")    
             
-            # Check for meaningful value
-            if type_key == 'null_value' or (inner_value is not None and inner_value != ''):
-                logger.info(f"PASA 2")    
+            # --- CRITICAL FIX ---
+            # If we hit 'null_value', we MUST skip it, otherwise we prematurely return 0.
+            if type_key == 'null_value':
+                logger.info(f"Skipping default null_value: {inner_value}")
+                continue 
+            
+            # Check if the value is meaningfully set (non-None, non-empty, and not zero for numbers)
+            # NOTE: We allow False for boolean_value and 0 for integer/double, but only if that's the only value set.
+            # To be safe, we rely on the fact that only one field is populated.
+            
+            if inner_value is not None and inner_value != '':
+                logger.info(f"Found set value for type_key {type_key}: {inner_value}")
+                # If the value is a complex type (timestamp, map, array) or a string/boolean/number, we return it.
                 return inner_value
-            
-    logger.info(f"PASA 3")    
+                
+    # 2. Fallback: If the loop finishes, the value must be NULL, 0, or False.
+    # In this case, we rely on the object's representation of null, which is 'null_value'.
+    if hasattr(value_obj, 'null_value'):
+        logger.info(f"Falling back to null_value")
+        # This will return 0, but it is the correct value for Firestore's NULL.
+        return getattr(value_obj, 'null_value') 
+
+    logger.warning("No valid value found in Value object.")
     return None
 
 @functions_framework.cloud_event
