@@ -10,9 +10,17 @@ from google.events.cloud.firestore_v1.types.data import Value
 import functions_framework
 from typing import Dict, Any
 
+
+
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+FIREBASE_FIELD_TYPES = [
+    'null_value', 'boolean_value', 'integer_value', 'double_value', 'timestamp_value',
+    'string_value', 'bytes_value', 'reference_value', 'geo_point_value', 
+    'array_value', 'map_value'
+]
 
 def _decode_firestore_fields(fields: Dict[str, Any]) -> Dict[str, Any]:
     """
