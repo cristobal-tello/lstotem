@@ -56,7 +56,6 @@ def check_push_data(cloudevent):
                 for key, value_obj in fields.items():
                     logger.info(f"Type of value_obj: {type(value_obj)}")
                     if isinstance(value_obj, Value):
-                        inner_key = list(value_obj.keys())[0]
                         logger.info(f"******** Key2: {key}, Value: {value_obj} *************")
                         logger.info("Which oneof: %s", value_obj.WhichOneof("value"))
                         kind = value_obj.WhichOneof("value")
