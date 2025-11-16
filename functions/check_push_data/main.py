@@ -132,6 +132,8 @@ def check_push_data(cloudevent):
                 for key, value_obj in fields.items():
                     logger.info(f"Type of value_obj: {type(value_obj)}")
                     logger.info(f"Dir of value_obj: {dir(value_obj)}")
+                    kind = value_obj._pb.WhichOneof("value_type")
+                    logger.info(f"Kind of value_obj: {kind}")
                     if isinstance(value_obj, Value):
                         logger.info(f"******** Key2: {key}, Value: {value_obj}");
                         content = extract_value_from_proto(value_obj)
