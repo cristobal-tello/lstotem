@@ -13,12 +13,6 @@ from typing import Dict, Any
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-FIREBASE_FIELD_TYPES = [
-    'null_value', 'boolean_value', 'integer_value', 'double_value', 'timestamp_value',
-    'string_value', 'bytes_value', 'reference_value', 'geo_point_value', 
-    'array_value', 'map_value'
-]
-
 def _decode_firestore_fields(fields: Dict[str, Any]) -> Dict[str, Any]:
     """
     Decodes Firestore structured fields from the DocumentEventData 
@@ -31,7 +25,6 @@ def _decode_firestore_fields(fields: Dict[str, Any]) -> Dict[str, Any]:
         else:
             decoded_data[key] = firestore_type_value
     return decoded_data
-
 
 @functions_framework.cloud_event
 def check_push_data(cloudevent):
@@ -49,36 +42,36 @@ def check_push_data(cloudevent):
 
             if isinstance(raw, (bytes, bytearray)):
                 # Google Cloud
-                #json_string = raw.decode("utf-8", errors="ignore")
-                #firestore_event_data: Dict[str, Any] = json.loads(json_string) 
-                #fields = firestore_event_data.get('value', {}).get('fields', {})
                 firestore_event = DocumentEventData.deserialize(raw)
                 value: Document = firestore_event.value 
                 resource_name = value.name
 
-                fields = value.fields if value and value.fields else {}
-                fields2 = _decode_firestore_fields(fields)
+                firestore_fields = value.fields if value and value.fields else {}
+                fields = _decode_firestore_fields(firestore_fields)
                 
-                logger.info("Firestore fields obtained from CloudEvent data.")
                 logger.info(f"Resource name: {resource_name}")
                 logger.info(f"Type of fields: {type(fields)}")
-                logger.info(f"Type of fields: {type(fields2)}")
-                logger.info(f"Data ': {fields2}")
-                for key, value_obj in fields2.items():
+                logger.info(f"Data ': {fields}")
+                for key, value_obj in fields.items():
+                    logger.info(f"Type of value_obj: {type(value_obj)}")
                     logger.info(f"******** Key2: {key}, Value: {value_obj} *************")
                     
             else:
                 # Local environment testing
                 data = json.loads(json.dumps(raw))
+                resource_name = data["value"]["name"]
                 fields = data["value"]["fields"]
-                logger.info("JSON")
                 logger.info(f"Type of fields: {type(fields)}")
 
                 for key, value_obj in fields.items():
-                    # Extract the inner Firestore value (stringValue, doubleValue, integerValue, etc.)
+                    logger.info(f"Type of value_obj: {type(value_obj)}")
                     inner_key = list(value_obj.keys())[0]
-                    logger.info(f"******** Key: {key}, Value: {value_obj[inner_key]} *************")
+                    logger.info(f"******** Key3: {key}, Value: {value_obj[inner_key]} *************")
 
+        # logger.info("Final Resource name: %s", resource_name)
+        # for key, value_obj in fields.items():
+        #     logger.info(f"******** Final: {key}, Value: {value_obj} *************")
+        
         logger.info(f"******** End Processing: {func_name} *************")
         return "OK", 200
     
