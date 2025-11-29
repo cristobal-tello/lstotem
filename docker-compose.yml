@@ -1,10 +1,3 @@
-# We intentionally do NOT mount any data-persistence volume for Firestore.
-# The gcloud Firestore emulator (Native mode) is in-memory only and clears data
-# on shutdown, so persisting /data would be misleading.
-#
-# We DO mount the function source for live reload during local dev. Remove that
-# bind mount if you prefer image-only, rebuild-on-change workflow.
-
 services:
   web:
     build:
@@ -87,9 +80,9 @@ services:
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080"]
       interval: 30s           # Check less frequently
-      timeout: 10s            # Allow more time for response
+      timeout: 10s
       retries: 5
-      start_period: 20s       # Give the 
+      start_period: 20s
     networks:
       - project-network
 
