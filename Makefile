@@ -57,7 +57,6 @@ firestore_list_orders:
 	  -H "Content-Type: application/json" \
 	  -d '{"structuredQuery":{"from":[{"collectionId":"orders"}]}}'
 
-
 web_bash:
 	docker exec -it $(GOOGLE_CLOUD_PROJECT)-web bash # Open an interactive bash shell in the running container
 

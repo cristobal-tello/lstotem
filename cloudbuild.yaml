@@ -17,7 +17,7 @@ steps:
       - "${_SERVICE_NAME}"
       - "--repository-format=docker"
       - "--location=${_RUN_REGION}"
-      - "--description=Repositorio Docker para ${_SERVICE_NAME}"
+      - "--description=${_SERVICE_NAME} docker repository"
     allow_failure: true
 
   - name: "gcr.io/cloud-builders/docker"
